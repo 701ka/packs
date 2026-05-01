@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign Up — EditorPack</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../style/style.css" />
+    <link rel="stylesheet" href="../style/notify.css" />
+    <link rel="stylesheet" href="../style/signup.css" />
+  </head>
+  <body>
+    <nav class="nav">
+      <a href="/" class="nav-logo">EditorPack</a>
+    </nav>
+    <div class="auth-container">
+      <div class="auth-box">
+        <div class="auth-title">Ro'yxatdan o'tish</div>
+        <div class="auth-sub">Bepul akkaunt yarating</div>
+        <div class="auth-error" id="error"></div>
+        <form onsubmit="signup(event)">
+          <input
+            class="auth-input"
+            type="text"
+            id="name"
+            placeholder="Ismingiz"
+            required
+          />
+          <input
+            class="auth-input"
+            type="email"
+            id="email"
+            placeholder="Email"
+            required
+          />
+          <input
+            class="auth-input"
+            type="password"
+            id="password"
+            placeholder="Parol"
+            required
+          />
+          <button class="auth-btn" type="submit">Ro'yxatdan o'tish</button>
+        </form>
+        <div class="auth-link">
+          Akkaunt bormi? <a href="login.html">Kirish</a>
+        </div>
+      </div>
+    </div>
+    <script src="../js/sign-up.js"></script>
+    <script src="../js/notify.js"></script>
+  </body>
+</html>

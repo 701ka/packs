@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EditorPack — Video Editing Resources</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style/style.css" />
+    <link rel="stylesheet" href="style/notify.css" />
+  </head>
+  <body>
+    <!-- NAV -->
+    <nav class="nav">
+      <a href="/" class="nav-logo">EditorPack</a>
+      <div class="nav-links">
+        <a class="nav-link" href="/pages/packs.html">Browse Packs</a>
+        <a class="nav-link" href="/pages/packs.html?filter=Free">Free Packs</a>
+        <a
+          class="nav-admin-btn"
+          href="/pages/admin-panel.html"
+          id="adminBtn"
+          style="display: none"
+          >⚙️ Admin</a
+        >
+        <a
+          class="nav-admin-btn"
+          href="/pages/uploader-panel.html"
+          id="uploaderBtn"
+          style="display: none"
+          >📤 Panel</a
+        >
+        <div class="nav-user" id="navUser"></div>
+      </div>
+    </nav>
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-badge"><span></span>500+ Editing Packs Available</div>
+      <h1>Level up your<br /><em>video editing</em></h1>
+      <p>
+        Download premium packs for CapCut, After Effects, Premiere Pro, DaVinci
+        Resolve and more. Free &amp; paid resources for every editor.
+      </p>
+      <div class="hero-cta">
+        <a href="/pages/packs.html" class="btn-primary">Browse All Packs →</a>
+        <a href="/pages/packs.html?filter=Free" class="btn-secondary"
+          >See Free Packs</a
+        >
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num"><span id="statTotal">—</span></div>
+        <div class="stat-label">Total packs</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num"><span id="statFree">—</span></div>
+        <div class="stat-label">Free resources</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num"><span>40k+</span></div>
+        <div class="stat-label">Downloads</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num"><span>6</span></div>
+        <div class="stat-label">Supported apps</div>
+      </div>
+    </div>
+
+    <!-- CATEGORIES -->
+    <div class="section" style="padding-bottom: 0">
+      <div class="section-title" style="margin-bottom: 20px">Browse by App</div>
+      <div class="categories-grid">
+        <a href="/pages/packs.html?filter=CapCut" class="cat-card">
+          <div class="cat-icon">🎬</div>
+          <div class="cat-name">CapCut</div>
+          <div class="cat-count" id="count-CapCut">— packs</div>
+        </a>
+        <a href="/pages/packs.html?filter=After+Effects" class="cat-card">
+          <div class="cat-icon">✨</div>
+          <div class="cat-name">After Effects</div>
+          <div class="cat-count" id="count-After Effects">— packs</div>
+        </a>
+        <a href="/pages/packs.html?filter=Premiere" class="cat-card">
+          <div class="cat-icon">🎞️</div>
+          <div class="cat-name">Premiere Pro</div>
+          <div class="cat-count" id="count-Premiere">— packs</div>
+        </a>
+        <a href="/pages/packs.html?filter=DaVinci" class="cat-card">
+          <div class="cat-icon">🎨</div>
+          <div class="cat-name">DaVinci</div>
+          <div class="cat-count" id="count-DaVinci">— packs</div>
+        </a>
+        <a href="/pages/packs.html?filter=Final+Cut" class="cat-card">
+          <div class="cat-icon">🍎</div>
+          <div class="cat-name">Final Cut</div>
+          <div class="cat-count" id="count-Final Cut">— packs</div>
+        </a>
+        <a href="/pages/packs.html?filter=Free" class="cat-card">
+          <div class="cat-icon">🆓</div>
+          <div class="cat-name">Free Packs</div>
+          <div class="cat-count" id="count-Free">— packs</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- TRENDING -->
+    <div class="section" style="margin-top: 48px; padding-bottom: 30px">
+      <div class="section-header">
+        <div class="section-title">🔥 Trending</div>
+        <a href="/pages/packs.html" class="nav-link">Hammasini ko'rish →</a>
+      </div>
+      <div class="pack-grid" id="trendingGrid"></div>
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <div class="how-section">
+      <div
+        class="section-title"
+        style="text-align: center; margin-bottom: 40px"
+      >
+        Qanday ishlaydi?
+      </div>
+      <div class="how-grid">
+        <div class="how-card">
+          <div class="how-num">01</div>
+          <div class="how-icon">👤</div>
+          <div class="how-title">Ro'yxatdan o'ting</div>
+          <div class="how-desc">
+            Bepul akkaunt yarating va barcha packlar katalogiga kiring.
+          </div>
+        </div>
+        <div class="how-card">
+          <div class="how-num">02</div>
+          <div class="how-icon">📦</div>
+          <div class="how-title">Pack tanlang</div>
+          <div class="how-desc">
+            O'zingizga kerakli dastur va narxga mos packni toping.
+          </div>
+        </div>
+        <div class="how-card">
+          <div class="how-num">03</div>
+          <div class="how-icon">🚀</div>
+          <div class="how-title">Yuklab oling</div>
+          <div class="how-desc">
+            Bir bosish bilan yuklab oling va editing game ingizni yuksalting.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a href="/" class="footer-logo">EditorPack</a>
+          <p class="footer-desc">
+            Premium video editing resources for CapCut, After Effects, Premiere
+            Pro, DaVinci Resolve and more.
+          </p>
+          <div class="footer-socials">
+            <a href="#" class="social-link">𝕏</a>
+            <a href="#" class="social-link">in</a>
+            <a href="#" class="social-link">▶</a>
+            <a href="#" class="social-link">📷</a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Packs</div>
+          <a href="/pages/packs.html" class="footer-link">All Packs</a>
+          <a href="/pages/packs.html?filter=Free" class="footer-link"
+            >Free Packs</a
+          >
+          <a href="/pages/packs.html?filter=CapCut" class="footer-link"
+            >CapCut Packs</a
+          >
+          <a href="/pages/packs.html?filter=After+Effects" class="footer-link"
+            >After Effects</a
+          >
+          <a href="/pages/packs.html?filter=DaVinci" class="footer-link"
+            >DaVinci Resolve</a
+          >
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Company</div>
+          <a href="#" class="footer-link">About Us</a>
+          <a href="#" class="footer-link">Blog</a>
+          <a href="#" class="footer-link">Careers</a>
+          <a href="#" class="footer-link">Contact</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Support</div>
+          <a href="#" class="footer-link">Help Center</a>
+          <a href="#" class="footer-link">Privacy Policy</a>
+          <a href="#" class="footer-link">Terms of Service</a>
+          <a href="#" class="footer-link">Refund Policy</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2025 EditorPack. All rights reserved.</span>
+        <span>Made with ♥ for video editors</span>
+      </div>
+    </footer>
+
+    <script src="js/notify.js"></script>
+    <script src="js/landing.js"></script>
+  </body>
+</html>

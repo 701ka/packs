@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Browse Packs — EditorPack</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../style/style.css" />
+    <link rel="stylesheet" href="../style/notify.css" />
+  </head>
+  <body>
+    <nav class="nav">
+      <a href="/" class="nav-logo">EditorPack</a>
+      <div class="nav-links">
+        <a class="nav-link active" href="/pages/packs.html">Browse Packs</a>
+        <a class="nav-link" href="/pages/packs.html?filter=Free">Free Packs</a>
+        <a
+          class="nav-admin-btn"
+          href="/pages/admin-panel.html"
+          id="adminBtn"
+          style="display: none"
+          >⚙️ Admin</a
+        >
+        <a
+          class="nav-admin-btn"
+          href="/pages/uploader-panel.html"
+          id="uploaderBtn"
+          style="display: none"
+          >📤 Panel</a
+        >
+        <div class="nav-user" id="navUser"></div>
+      </div>
+    </nav>
+
+    <div class="packs-hero">
+      <h2>Browse Packs</h2>
+      <p>500+ premium editing resources uchun kerakligini toping</p>
+    </div>
+
+    <div class="section">
+      <div class="search-bar">
+        <input
+          class="search-input"
+          type="text"
+          placeholder="Search packs, transitions, LUTs, templates..."
+          oninput="filterPacks(this.value)"
+        />
+      </div>
+      <div class="section-header">
+        <div class="section-title" id="packCount">All Packs</div>
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="setFilter('All', this)">
+            All
+          </button>
+          <button class="filter-btn" onclick="setFilter('CapCut', this)">
+            CapCut
+          </button>
+          <button class="filter-btn" onclick="setFilter('After Effects', this)">
+            After Effects
+          </button>
+          <button class="filter-btn" onclick="setFilter('Premiere', this)">
+            Premiere
+          </button>
+          <button class="filter-btn" onclick="setFilter('DaVinci', this)">
+            DaVinci
+          </button>
+          <button class="filter-btn" onclick="setFilter('Free', this)">
+            Free Only
+          </button>
+        </div>
+      </div>
+      <div class="pack-grid" id="packGrid"></div>
+    </div>
+
+    <footer class="footer">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a href="/" class="footer-logo">EditorPack</a>
+          <p class="footer-desc">
+            Premium video editing resources for CapCut, After Effects, Premiere
+            Pro, DaVinci Resolve and more.
+          </p>
+          <div class="footer-socials">
+            <a href="#" class="social-link">𝕏</a>
+            <a href="#" class="social-link">in</a>
+            <a href="#" class="social-link">▶</a>
+            <a href="#" class="social-link">📷</a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Packs</div>
+          <a href="/pages/packs.html" class="footer-link">All Packs</a>
+          <a href="/pages/packs.html?filter=Free" class="footer-link"
+            >Free Packs</a
+          >
+          <a href="/pages/packs.html?filter=CapCut" class="footer-link"
+            >CapCut Packs</a
+          >
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Company</div>
+          <a href="#" class="footer-link">About Us</a>
+          <a href="#" class="footer-link">Blog</a>
+          <a href="#" class="footer-link">Contact</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Support</div>
+          <a href="#" class="footer-link">Help Center</a>
+          <a href="#" class="footer-link">Privacy Policy</a>
+          <a href="#" class="footer-link">Terms of Service</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2025 EditorPack. All rights reserved.</span>
+        <span>Made with ♥ for video editors</span>
+      </div>
+    </footer>
+
+    <script src="../js/notify.js"></script>
+    <script src="../js/app.js"></script>
+  </body>
+</html>

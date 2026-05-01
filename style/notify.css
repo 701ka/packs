@@ -1,0 +1,146 @@
+/* ===== TOAST ===== */
+.ep-toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--toast-color, #4ade80);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 280px;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: all 0.3s ease;
+  z-index: 99999;
+}
+
+.ep-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.ep-toast-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.ep-toast-msg {
+  font-size: 14px;
+  color: var(--text);
+  flex: 1;
+  line-height: 1.4;
+}
+
+.ep-toast-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.ep-toast-close:hover {
+  color: var(--text);
+}
+
+/* ===== CONFIRM ===== */
+.ep-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99998;
+  opacity: 0;
+  transition: opacity 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+.ep-confirm-overlay.show {
+  opacity: 1;
+}
+
+.ep-confirm-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 28px;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  transform: translateY(10px);
+  transition: transform 0.2s;
+}
+
+.ep-confirm-overlay.show .ep-confirm-box {
+  transform: translateY(0);
+}
+
+.ep-confirm-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.ep-confirm-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.ep-confirm-msg {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.ep-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.ep-confirm-cancel {
+  padding: 10px 22px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.ep-confirm-cancel:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.ep-confirm-ok {
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+
+.ep-confirm-ok:hover {
+  opacity: 0.85;
+}

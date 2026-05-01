@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel — EditorPack</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../style/style.css" />
+    <link rel="stylesheet" href="../style/notify.css" />
+    <link rel="stylesheet" href="../style/admin-panel.css" />
+  </head>
+  <body>
+    <nav class="nav">
+      <a href="/" class="nav-logo">EditorPack</a>
+      <div class="nav-links">
+        <span class="live-badge"><span class="live-dot"></span> Real-time</span>
+        <a href="/" class="nav-link">← Back to Site</a>
+      </div>
+    </nav>
+
+    <div class="admin-wrap">
+      <div class="admin-header">
+        <div>
+          <div class="admin-title">⚙️ Admin Panel</div>
+          <div class="admin-subtitle">Barchani boshqarish</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('users')">
+          👥 Foydalanuvchilar
+        </button>
+        <button class="tab-btn" onclick="switchTab('packs')">📦 Packlar</button>
+      </div>
+
+      <!-- Users Tab -->
+      <div id="tab-users">
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-card-num" id="totalUsers">—</div>
+            <div class="stat-card-label">Jami foydalanuvchilar</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-num" id="totalUploaders">—</div>
+            <div class="stat-card-label">Uploaderlar</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-num" id="totalAdmins">—</div>
+            <div class="stat-card-label">Adminlar</div>
+          </div>
+        </div>
+        <div class="users-table-wrap">
+          <div class="table-header">
+            <div class="table-title">Barcha foydalanuvchilar</div>
+            <input
+              class="search-users"
+              type="text"
+              placeholder="Qidirish..."
+              oninput="filterUsers(this.value)"
+            />
+          </div>
+          <div id="tableWrap">
+            <div class="empty-state">Yuklanmoqda...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Packs Tab -->
+      <div id="tab-packs" style="display: none">
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-card-num" id="totalPacks">—</div>
+            <div class="stat-card-label">Jami packlar</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-num" id="pendingPacks">—</div>
+            <div class="stat-card-label">Kutayotganlar</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-num" id="livePacks">—</div>
+            <div class="stat-card-label">Live packlar</div>
+          </div>
+        </div>
+        <div class="users-table-wrap">
+          <div class="table-header">
+            <div class="table-title">Barcha packlar</div>
+            <div style="display: flex; gap: 10px; align-items: center">
+              <select
+                class="search-users"
+                style="width: 140px"
+                onchange="filterPacksByStatus(this.value)"
+              >
+                <option value="all">Hammasi</option>
+                <option value="pending">Pending</option>
+                <option value="live">Live</option>
+                <option value="rejected">Rad etilgan</option>
+              </select>
+              <input
+                class="search-users"
+                type="text"
+                placeholder="Qidirish..."
+                oninput="filterPacksByName(this.value)"
+              />
+            </div>
+          </div>
+          <div id="packsTableWrap">
+            <div class="empty-state">Yuklanmoqda...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Pack Modal -->
+    <div
+      id="editModal"
+      class="modal-overlay"
+      style="display: none"
+      onclick="closeModal(event)"
+    >
+      <div class="modal">
+        <div class="modal-title">📦 Packni tahrirlash</div>
+        <input type="hidden" id="editId" />
+        <div class="form-group">
+          <label>Nomi</label><input id="editName" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>Tavsif</label
+          ><textarea id="editDesc" class="form-input" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Narxi</label
+          ><input id="editPrice" class="form-input" placeholder="Free" />
+        </div>
+        <div class="form-group">
+          <label>Rasm URL</label><input id="editImg" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>Download URL</label
+          ><input id="editDownload" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>Badge</label
+          ><input id="editBadge" class="form-input" placeholder="New, Hot..." />
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="editStatus" class="form-input">
+            <option value="pending">Pending</option>
+            <option value="live">Live</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button
+            class="btn-cancel"
+            onclick="
+              document.getElementById('editModal').style.display = 'none'
+            "
+          >
+            Bekor
+          </button>
+          <button class="btn-save" onclick="savePack()">Saqlash</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/notify.js"></script>
+    <script src="../js/admin-panel.js"></script>
+  </body>
+</html>

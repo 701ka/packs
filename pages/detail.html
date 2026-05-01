@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pack Detail — EditorPack</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../style/style.css" />
+    <link rel="stylesheet" href="../style/notify.css" />
+    <link rel="stylesheet" href="../style/detail.css" />
+  </head>
+  <body>
+    <nav class="nav">
+      <a href="/" class="nav-logo">EditorPack</a>
+      <div class="nav-links">
+        <a href="javascript:history.back()" class="nav-link">← Orqaga</a>
+        <div class="nav-user" id="navUser"></div>
+      </div>
+    </nav>
+
+    <div class="detail-page" id="detailPage">
+      <div class="detail-loading" id="loadingState">
+        <div class="loading-spinner"></div>
+        <p>Yuklanmoqda...</p>
+      </div>
+    </div>
+
+    <!-- PAYMENT MODAL -->
+    <div class="payment-overlay" id="paymentOverlay">
+      <div class="payment-modal">
+        <button class="payment-close" onclick="closePayment()">✕</button>
+        <div class="payment-header">
+          <div class="payment-icon">💳</div>
+          <div class="payment-title">To'lov</div>
+          <div class="payment-subtitle" id="paymentPackName">Pack nomi</div>
+        </div>
+        <div class="payment-price-row">
+          <span class="payment-label">Jami:</span>
+          <span class="payment-amount" id="paymentAmount">$0</span>
+        </div>
+        <div class="payment-methods">
+          <div class="payment-method-title">To'lov usulini tanlang</div>
+          <div class="payment-method-grid">
+            <button
+              class="pay-method-btn"
+              onclick="selectPayMethod(this, 'click')"
+            >
+              <span class="pay-method-icon">🃏</span>
+              <span>Click</span>
+            </button>
+            <button
+              class="pay-method-btn"
+              onclick="selectPayMethod(this, 'payme')"
+            >
+              <span class="pay-method-icon">💳</span>
+              <span>Payme</span>
+            </button>
+            <button
+              class="pay-method-btn"
+              onclick="selectPayMethod(this, 'uzum')"
+            >
+              <span class="pay-method-icon">🍇</span>
+              <span>Uzum</span>
+            </button>
+            <button
+              class="pay-method-btn"
+              onclick="selectPayMethod(this, 'card')"
+            >
+              <span class="pay-method-icon">💰</span>
+              <span>Karta</span>
+            </button>
+          </div>
+        </div>
+        <div class="payment-card-form" id="cardForm" style="display: none">
+          <input
+            class="pay-input"
+            type="text"
+            placeholder="0000 0000 0000 0000"
+            maxlength="19"
+            oninput="formatCard(this)"
+          />
+          <div class="pay-row">
+            <input
+              class="pay-input"
+              type="text"
+              placeholder="MM/YY"
+              maxlength="5"
+              oninput="formatExpiry(this)"
+            />
+            <input
+              class="pay-input"
+              type="text"
+              placeholder="CVV"
+              maxlength="3"
+            />
+          </div>
+          <input
+            class="pay-input"
+            type="text"
+            placeholder="Karta egasining ismi"
+          />
+        </div>
+        <div class="payment-note" id="paymentNote" style="display: none"></div>
+        <button
+          class="pay-btn"
+          id="payBtn"
+          onclick="processPayment()"
+          style="display: none"
+        >
+          To'lovni amalga oshirish
+        </button>
+        <div class="payment-secure">
+          🔒 Barcha to'lovlar xavfsiz SSL orqali amalga oshiriladi
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/notify.js"></script>
+    <script src="../js/detail.js"></script>
+  </body>
+</html>

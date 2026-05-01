@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Uploader Panel — EditorPack</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../style/style.css" />
+    <link rel="stylesheet" href="../style/notify.css" />
+    <link rel="stylesheet" href="../style/uploader-panel.css" />
+  </head>
+  <body>
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <a href="/" class="sidebar-logo">EditorPack</a>
+      <div class="sidebar-user" id="sidebarUser"></div>
+      <nav class="sidebar-nav">
+        <button
+          class="sidebar-item active"
+          onclick="showPage('dashboard', this)"
+        >
+          <span class="sidebar-icon">📊</span> Dashboard
+        </button>
+        <button class="sidebar-item" onclick="showPage('upload', this)">
+          <span class="sidebar-icon">📤</span> Pack yuklash
+        </button>
+      </nav>
+      <a href="/" class="sidebar-back">← Saytga qaytish</a>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main-content">
+      <!-- DASHBOARD PAGE -->
+      <div id="page-dashboard" class="page active">
+        <div class="page-header">
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub" id="welcomeMsg">Yuklanmoqda...</div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-card-num" id="myTotal">—</div>
+            <div class="stat-card-label">Jami packlarim</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-num" id="myLive">—</div>
+            <div class="stat-card-label">Live packlar</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-num" id="myPending">—</div>
+            <div class="stat-card-label">Admin kutmoqda</div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <div class="table-top">
+            <div class="table-title">Mening packlarim</div>
+            <button
+              class="add-btn"
+              onclick="
+                showPage('upload', document.querySelector('[onclick*=upload]'))
+              "
+            >
+              + Yangi Pack
+            </button>
+          </div>
+          <div id="myPacksWrap">
+            <div class="empty-state">Yuklanmoqda...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UPLOAD PAGE -->
+      <div id="page-upload" class="page">
+        <div class="page-header">
+          <div class="page-title" id="uploadPageTitle">
+            📤 Yangi Pack yuklash
+          </div>
+          <div class="page-sub">To'ldiring va admin tasdiqlashini kuting</div>
+        </div>
+
+        <div class="upload-layout">
+          <!-- LEFT: FORM -->
+          <div class="upload-form-col">
+            <input type="hidden" id="packId" />
+
+            <div class="form-group">
+              <label class="form-label">Pack nomi *</label>
+              <input
+                id="packName"
+                class="form-input"
+                placeholder="Masalan: Cinematic LUT Pack"
+                oninput="updatePreview()"
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Tavsif *</label>
+              <textarea
+                id="packDesc"
+                class="form-input"
+                rows="3"
+                placeholder="Pack haqida qisqacha..."
+                oninput="updatePreview()"
+              ></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Narxi</label>
+                <div class="price-wrap">
+                  <span
+                    class="price-prefix"
+                    id="pricePrefix"
+                    style="display: none"
+                    >$</span
+                  >
+                  <input
+                    id="packPrice"
+                    class="form-input price-input"
+                    placeholder="Free"
+                    oninput="handlePriceInput(this)"
+                  />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Badge</label>
+                <select
+                  id="packBadge"
+                  class="form-input"
+                  onchange="updatePreview()"
+                >
+                  <option value="">Yo'q</option>
+                  <option value="free">Free</option>
+                  <option value="hot">Hot</option>
+                  <option value="new">New</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ilovalar</label>
+              <div class="apps-pills" id="appsCheck">
+                <div class="app-pill" onclick="toggleApp(this)">CapCut</div>
+                <div class="app-pill" onclick="toggleApp(this)">Premiere</div>
+                <div class="app-pill" onclick="toggleApp(this)">
+                  After Effects
+                </div>
+                <div class="app-pill" onclick="toggleApp(this)">DaVinci</div>
+                <div class="app-pill" onclick="toggleApp(this)">Final Cut</div>
+                <div class="app-pill" onclick="toggleApp(this)">All Apps</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Pack rasmi *</label>
+              <div
+                class="img-upload-area"
+                id="imgUploadArea"
+                onclick="document.getElementById('imgFile').click()"
+              >
+                <div class="img-upload-icon">🖼️</div>
+                <div class="img-upload-text">Rasm yuklash uchun bosing</div>
+                <div class="img-upload-sub">PNG, JPG, WEBP — max 5MB</div>
+                <input
+                  type="file"
+                  id="imgFile"
+                  accept="image/*"
+                  style="display: none"
+                  onchange="handleImgUpload(this)"
+                />
+              </div>
+              <div
+                class="img-preview-wrap"
+                id="imgPreviewWrap"
+                style="display: none"
+              >
+                <img id="imgPreviewSmall" class="img-preview-small" />
+                <button class="img-remove-btn" onclick="removeImg()">
+                  ✕ O'chirish
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Download URL *</label>
+              <input
+                id="packDownload"
+                class="form-input"
+                placeholder="https://drive.google.com/..."
+              />
+            </div>
+
+            <div class="upload-note">
+              ℹ️ Pack yuborilgandan so'ng admin tekshirib, tasdiqlaydi.
+              Tasdiqlanguncha "pending" holatida turadi.
+            </div>
+
+            <div class="form-actions">
+              <button class="btn-cancel" onclick="resetForm()">Tozalash</button>
+              <button class="btn-save" id="submitBtn" onclick="submitPack()">
+                📤 Yuborish
+              </button>
+            </div>
+          </div>
+
+          <!-- RIGHT: PREVIEW + ADVICE -->
+          <div class="upload-preview-col">
+            <div class="preview-label">👁️ Namuna ko'rinish</div>
+            <div class="pack-card-preview" id="packPreview">
+              <div class="preview-thumb" id="previewThumb">
+                <div class="preview-thumb-placeholder">🖼️</div>
+                <span
+                  class="pack-badge preview-badge"
+                  id="previewBadge"
+                  style="display: none"
+                ></span>
+              </div>
+              <div class="preview-info">
+                <div class="preview-tags" id="previewTags"></div>
+                <div class="preview-name" id="previewName">
+                  Pack nomi bu yerda
+                </div>
+                <div class="preview-desc" id="previewDesc">
+                  Pack tavsifi bu yerda ko'rinadi...
+                </div>
+                <div class="preview-footer">
+                  <span class="preview-price" id="previewPrice">Free</span>
+                  <button class="preview-btn" id="previewBtn">Download</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ADVICE -->
+            <div class="advice-box">
+              <div class="advice-title">💡 Maslahatlar</div>
+              <div class="advice-list">
+                <div class="advice-item">
+                  <span class="advice-icon">🖼️</span>
+                  <div>
+                    <div class="advice-head">Sifatli rasm yuklang</div>
+                    <div class="advice-text">
+                      1280×720 yoki undan katta. Pack ichidan eng yaxshi frameni
+                      oling.
+                    </div>
+                  </div>
+                </div>
+                <div class="advice-item">
+                  <span class="advice-icon">✍️</span>
+                  <div>
+                    <div class="advice-head">Aniq nom yozing</div>
+                    <div class="advice-text">
+                      "Pack 1" emas, "Cinematic LUT Pack Vol.2" kabi aniq nom
+                      yozing.
+                    </div>
+                  </div>
+                </div>
+                <div class="advice-item">
+                  <span class="advice-icon">📝</span>
+                  <div>
+                    <div class="advice-head">Tavsifni to'ldiring</div>
+                    <div class="advice-text">
+                      Nechta fayl bor, qaysi dasturda ishlaydi, kim uchun
+                      mosligini yozing.
+                    </div>
+                  </div>
+                </div>
+                <div class="advice-item">
+                  <span class="advice-icon">🔗</span>
+                  <div>
+                    <div class="advice-head">Ishlaydigan link</div>
+                    <div class="advice-text">
+                      Download linkni oldin tekshiring. Google Drive linkini
+                      "anyone can view" qilib oching.
+                    </div>
+                  </div>
+                </div>
+                <div class="advice-item">
+                  <span class="advice-icon">⏳</span>
+                  <div>
+                    <div class="advice-head">Sabr qiling</div>
+                    <div class="advice-text">
+                      Admin 24 soat ichida tekshiradi. Bir necha marta yuborish
+                      shart emas.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/notify.js"></script>
+    <script src="../js/uploader-panel.js"></script>
+  </body>
+</html>
