@@ -13,4 +13,6 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/packs", require("./routes/packs"));
 app.use("/api/admin", require("./routes/admin"));
 
-app.listen(4000, () => console.log("Server running on http://localhost:4000"));
+// SHU QATORNI O'ZGARTIRING:
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
