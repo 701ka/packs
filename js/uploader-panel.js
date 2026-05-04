@@ -10,7 +10,7 @@ function getToken() {
   return localStorage.getItem("token");
 }
 
-const me = getUser();
+const me = EP.getUser();
 if (!me || (me.role !== "uploader" && me.role !== "admin")) {
   window.location.href = "/";
 }
@@ -58,19 +58,10 @@ function formatDate(dt) {
 }
 
 // ===== MY PACKS =====
-async function fetchMyPacks() {
-  try {
-    const res = await fetch(`${API}/packs/my/list`, {
-      headers: { Authorization: "Bearer " + getToken() },
-    });
-    if (!res.ok) throw new Error();
-    myPacks = await res.json();
-    updateStats();
-    renderMyPacks();
-  } catch {
-    document.getElementById("myPacksWrap").innerHTML =
-      '<div class="empty-state">Xatolik yuz berdi.</div>';
-  }
+function fetchMyPacks() {
+  myPacks = EP.getPacks().filter((p) => p.uploaded_by == me.id);
+  updateStats();
+  renderMyPacks();
 }
 
 function updateStats() {
@@ -332,7 +323,7 @@ async function submitPack() {
     return;
   }
 
-  const body = {
+  const packData = {
     name,
     desc,
     price: getPriceValue(),
@@ -340,37 +331,33 @@ async function submitPack() {
     download_url,
     badge: document.getElementById("packBadge").value,
     apps: getSelectedApps(),
+    status: me.role === "admin" ? "live" : "pending",
+    uploaded_by: me.id,
+    uploader_name: me.name,
+    uploader_email: me.email,
   };
 
   const btn = document.getElementById("submitBtn");
   btn.disabled = true;
-  btn.textContent = "Yuborilmoqda...";
+  btn.textContent = "Saqlanmoqda...";
 
   try {
-    const url = editingId ? `${API}/packs/${editingId}` : `${API}/packs`;
-    const method = editingId ? "PUT" : "POST";
-
-    const res = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + getToken(),
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Xatolik");
+    if (editingId) {
+      EP.updatePack(editingId, packData);
+      showToast("✅ Saqlandi!", "success");
+    } else {
+      EP.addPack(packData);
+      showToast(
+        me.role === "admin"
+          ? "✅ Pack qo'shildi!"
+          : "✅ Yuborildi! Admin tekshiradi.",
+        "success",
+      );
     }
 
     resetForm();
     showPage("dashboard", document.querySelectorAll(".sidebar-item")[0]);
-    await fetchMyPacks();
-    showToast(
-      editingId ? "✅ Saqlandi!" : "✅ Pack yuborildi! Admin tekshiradi.",
-      "success",
-    );
+    fetchMyPacks();
   } catch (err) {
     showToast("Xatolik: " + err.message, "error");
   } finally {
@@ -378,29 +365,20 @@ async function submitPack() {
     btn.textContent = editingId ? "💾 Saqlash" : "📤 Yuborish";
   }
 }
-
 // ===== DELETE PACK =====
 async function deletePack(id) {
   showConfirm({
     title: "Packni o'chirish",
-    message: "Bu packni o'chirsangiz qaytarib bo'lmaydi. Davom etasizmi?",
+    message: "Bu packni o'chirsangiz qaytarib bo'lmaydi!",
     confirmText: "O'chirish",
     cancelText: "Bekor",
     type: "danger",
-    onConfirm: async () => {
-      try {
-        const res = await fetch(`${API}/packs/${id}`, {
-          method: "DELETE",
-          headers: { Authorization: "Bearer " + getToken() },
-        });
-        if (!res.ok) throw new Error();
-        myPacks = myPacks.filter((x) => x.id !== id);
-        updateStats();
-        renderMyPacks();
-        showToast("Pack o'chirildi.", "success");
-      } catch {
-        showToast("Xatolik yuz berdi!", "error");
-      }
+    onConfirm: () => {
+      EP.deletePack(id);
+      myPacks = myPacks.filter((x) => x.id != id);
+      updateStats();
+      renderMyPacks();
+      showToast("Pack o'chirildi.", "success");
     },
   });
 }

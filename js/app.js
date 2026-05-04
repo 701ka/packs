@@ -1,21 +1,7 @@
 /* ===========================
    EditorPack — app.js
+   localStorage version
    =========================== */
-
-const API = "http://localhost:4000/api";
-
-function getUser() {
-  return JSON.parse(localStorage.getItem("user") || "null");
-}
-
-function requireLogin() {
-  if (!getUser()) {
-    localStorage.setItem("redirect", window.location.href);
-    window.location.href = "/pages/login.html";
-    return false;
-  }
-  return true;
-}
 
 const GRAD_PAIRS = [
   ["#7c3aed", "#0ea5e9"],
@@ -27,43 +13,46 @@ const GRAD_PAIRS = [
 ];
 
 function packThumb(p) {
-  if (p.img) {
+  if (p.img)
     return `<img src="${p.img}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;">`;
-  }
   const col = GRAD_PAIRS[p.id % GRAD_PAIRS.length];
   return `<div style="width:100%;height:100%;background:linear-gradient(135deg,${col[0]},${col[1]});display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff">${p.name[0]}</div>`;
 }
 
+function isFree(p) {
+  return !p.price || p.price === "Free" || p.price === "$0";
+}
+
 let currentFilter = "All";
 let currentSearch = "";
-let allPacks = [];
 
-async function loadPacksFromAPI() {
-  try {
-    const params = new URLSearchParams();
-    if (currentFilter === "Free") params.set("free", "true");
-    else if (currentFilter !== "All") params.set("app", currentFilter);
-    if (currentSearch) params.set("search", currentSearch);
+function loadPacks() {
+  let packs = EP.getLivePacks();
 
-    const res = await fetch(`${API}/packs?${params}`);
-    const packs = await res.json();
-    allPacks = packs;
-    renderPackGrid(packs);
-  } catch {
-    const grid = document.getElementById("packGrid");
-    if (grid)
-      grid.innerHTML =
-        '<p style="color:var(--muted);grid-column:1/-1;text-align:center;padding:40px 0;">Packlar yuklanmadi. Server ishlayaptimi?</p>';
+  if (currentFilter === "Free") packs = packs.filter((p) => isFree(p));
+  else if (currentFilter !== "All")
+    packs = packs.filter((p) => (p.apps || []).includes(currentFilter));
+
+  if (currentSearch) {
+    const q = currentSearch.toLowerCase();
+    packs = packs.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.desc || "").toLowerCase().includes(q),
+    );
   }
+
+  renderPackGrid(packs);
+  updateCategoryCounts();
 }
 
 function renderPackGrid(packs) {
   const grid = document.getElementById("packGrid");
   if (!grid) return;
 
-  if (!packs || packs.length === 0) {
+  if (!packs.length) {
     grid.innerHTML =
-      '<p style="color:var(--muted);grid-column:1/-1;text-align:center;padding:40px 0;">No packs found.</p>';
+      '<p style="color:var(--muted);grid-column:1/-1;text-align:center;padding:40px 0;">Pack topilmadi.</p>';
     return;
   }
 
@@ -77,28 +66,30 @@ function renderPackGrid(packs) {
       </div>
       <div class="pack-info">
         <div class="pack-app-tags">
-          ${(Array.isArray(p.apps) ? p.apps : JSON.parse(p.apps || "[]")).map((a) => `<span class="app-tag">${a}</span>`).join("")}
+          ${(p.apps || []).map((a) => `<span class="app-tag">${a}</span>`).join("")}
         </div>
         <div class="pack-name">${p.name}</div>
         <div class="pack-desc">${p.desc}</div>
         <div class="pack-footer">
-          <span class="pack-price ${p.price === "Free" || p.price === "$0" ? "free" : ""}">
-            ${p.price === "$0" ? "Free" : p.price}
+          <span class="pack-price ${isFree(p) ? "free" : ""}">
+            ${isFree(p) ? "Free" : p.price}
           </span>
-          <button class="pack-dl-btn">
-            ${p.price === "Free" || p.price === "$0" ? "Download" : "Get Pack"}
-          </button>
+          <button class="pack-dl-btn">${isFree(p) ? "Download" : "Get Pack"}</button>
         </div>
       </div>
-    </div>
-  `,
+    </div>`,
     )
     .join("");
 }
 
 function openDetail(id) {
-  if (!requireLogin()) return;
-  window.location.href = "/pages/detail.html?id=" + id;
+  const user = EP.getUser();
+  if (!user) {
+    localStorage.setItem("ep_redirect", `/pages/detail.html?id=${id}`);
+    window.location.href = "/pages/login.html";
+    return;
+  }
+  window.location.href = `/pages/detail.html?id=${id}`;
 }
 
 function setFilter(f, btn) {
@@ -106,89 +97,80 @@ function setFilter(f, btn) {
   document
     .querySelectorAll(".filter-btn")
     .forEach((b) => b.classList.remove("active"));
-  btn.classList.add("active");
-  loadPacksFromAPI();
+  if (btn) btn.classList.add("active");
+
+  // URL filter bo'lsa scroll
+  const grid = document.getElementById("packGrid");
+  if (grid) grid.scrollIntoView({ behavior: "smooth" });
+
+  loadPacks();
 }
 
 function filterPacks(q) {
   currentSearch = q;
-  loadPacksFromAPI();
+  loadPacks();
 }
 
-// NAV USER
-function renderNavUser() {
-  const user = getUser();
-  const navUser = document.getElementById("navUser");
-  if (!navUser) return;
-
-  if (user) {
-    const initials = user.name
-      ? user.name
-          .split(" ")
-          .map((w) => w[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2)
-      : "?";
-
-    navUser.innerHTML = `
-      <div class="nav-avatar" onclick="toggleDropdown()">
-        <div class="avatar-circle">${initials}</div>
-      </div>
-      <div class="nav-dropdown" id="navDropdown">
-        <div class="dropdown-header">
-          <div class="dropdown-avatar">${initials}</div>
-          <div>
-            <div class="dropdown-name">${user.name}</div>
-            <div class="dropdown-email">${user.email}</div>
-          </div>
-        </div>
-        <div class="dropdown-divider"></div>
-        ${user.role === "admin" ? `<a href="/pages/admin-panel.html" class="dropdown-item">⚙️ Admin Panel</a>` : ""}
-        ${user.role === "uploader" || user.role === "admin" ? `<a href="/pages/uploader-panel.html" class="dropdown-item">📤 Uploader Panel</a>` : ""}
-        ${user.role === "admin" || user.role === "uploader" ? `<div class="dropdown-divider"></div>` : ""}
-        <a href="#" class="dropdown-item">👤 Profile</a>
-        <a href="#" class="dropdown-item">📦 My Packs</a>
-        <div class="dropdown-divider"></div>
-        <a href="#" class="dropdown-item danger" onclick="logout()">🚪 Logout</a>
-      </div>
-    `;
-  } else {
-    navUser.innerHTML = `
-      <a href="/pages/login.html" class="nav-btn-outline">Log In</a>
-      <a href="/pages/signup.html" class="nav-btn">Sign Up Free</a>
-    `;
-  }
-}
-
-function toggleDropdown() {
-  const dd = document.getElementById("navDropdown");
-  if (dd) dd.classList.toggle("show");
-}
-
-function logout() {
-  showConfirm({
-    title: "Chiqish",
-    message: "Akkauntdan chiqmoqchimisiz?",
-    confirmText: "Ha, chiqish",
-    cancelText: "Bekor",
-    type: "warning",
-    onConfirm: () => {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.reload();
-    },
+function updateCategoryCounts() {
+  const packs = EP.getLivePacks();
+  const apps = ["CapCut", "After Effects", "Premiere", "DaVinci", "Final Cut"];
+  apps.forEach((app) => {
+    const el = document.getElementById(`count-${app}`);
+    if (el)
+      el.textContent =
+        packs.filter((p) => (p.apps || []).includes(app)).length + " packs";
   });
+  const freeEl = document.getElementById("count-Free");
+  if (freeEl)
+    freeEl.textContent = packs.filter((p) => isFree(p)).length + " packs";
 }
 
-document.addEventListener("click", function (e) {
-  const avatar = document.querySelector(".nav-avatar");
-  const dropdown = document.getElementById("navDropdown");
-  if (dropdown && avatar && !avatar.contains(e.target)) {
-    dropdown.classList.remove("show");
-  }
-});
+function loadTrending() {
+  const grid = document.getElementById("trendingGrid");
+  if (!grid) return;
+  const packs = EP.getLivePacks()
+    .filter((p) => p.badge === "hot" || p.badge === "new")
+    .slice(0, 4);
+  const show = packs.length ? packs : EP.getLivePacks().slice(0, 4);
 
-// Ishga tushirish
-loadPacksFromAPI();
+  grid.innerHTML = show
+    .map(
+      (p) => `
+    <div class="pack-card" onclick="openDetail(${p.id})">
+      <div class="pack-thumb">
+        ${packThumb(p)}
+        ${p.badge ? `<span class="pack-badge badge-${p.badge}">${p.badge}</span>` : ""}
+      </div>
+      <div class="pack-info">
+        <div class="pack-app-tags">
+          ${(p.apps || []).map((a) => `<span class="app-tag">${a}</span>`).join("")}
+        </div>
+        <div class="pack-name">${p.name}</div>
+        <div class="pack-desc">${p.desc}</div>
+        <div class="pack-footer">
+          <span class="pack-price ${isFree(p) ? "free" : ""}">${isFree(p) ? "Free" : p.price}</span>
+          <button class="pack-dl-btn">${isFree(p) ? "Download" : "Get Pack"}</button>
+        </div>
+      </div>
+    </div>`,
+    )
+    .join("");
+}
+
+function loadStats() {
+  const packs = EP.getLivePacks();
+  const totalEl = document.getElementById("statTotal");
+  const freeEl = document.getElementById("statFree");
+  if (totalEl) totalEl.textContent = packs.length + "+";
+  if (freeEl) freeEl.textContent = packs.filter((p) => isFree(p)).length + "+";
+}
+
+// URL dan filter olish
+const urlParams = new URLSearchParams(window.location.search);
+const urlFilter = urlParams.get("filter");
+if (urlFilter) currentFilter = urlFilter;
+
+loadStats();
+loadTrending();
+loadPacks();
 renderNavUser();

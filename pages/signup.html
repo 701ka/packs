@@ -50,8 +50,26 @@
         </div>
       </div>
     </div>
-    <script src="js/config.js"></script>
-    <script src="../js/sign-up.js"></script>
     <script src="../js/notify.js"></script>
+    <script src="../js/storage.js"></script>
+    <script src="../js/sign-up.js"></script>
+    <script>
+      function signup(e) {
+        e.preventDefault();
+        const name = document.getElementById("name").value;
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        const errorEl = document.getElementById("error");
+        errorEl.style.display = "none";
+
+        const result = epSignup(name, email, password);
+        if (result.error) {
+          errorEl.textContent = result.error;
+          errorEl.style.display = "block";
+          return;
+        }
+        window.location.href = "/";
+      }
+    </script>
   </body>
 </html>
