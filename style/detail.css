@@ -34,11 +34,6 @@
   gap: 32px;
   align-items: start;
 }
-
-/* ===== LEFT COL ===== */
-.detail-left {
-}
-
 .detail-cover {
   width: 100%;
   aspect-ratio: 16 / 9;
