@@ -361,6 +361,7 @@ select {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
+  align-items: stretch;
 }
 
 .pack-card {
@@ -370,6 +371,9 @@ select {
   overflow: hidden;
   transition: all 0.2s;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .pack-card:hover {
@@ -427,6 +431,9 @@ select {
 
 .pack-info {
   padding: 14px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
 .pack-app-tags {
@@ -457,12 +464,19 @@ select {
   color: var(--muted);
   line-height: 1.5;
   margin-bottom: 12px;
+  min-height: 54px;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .pack-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
 }
 
 .pack-price {
@@ -483,6 +497,7 @@ select {
   background: linear-gradient(135deg, #7c3aed, #0ea5e9);
   color: #fff;
   transition: opacity 0.15s;
+  flex-shrink: 0;
 }
 
 .pack-dl-btn:hover {

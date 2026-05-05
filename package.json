@@ -1,0 +1,13 @@
+{
+  "name": "editorpack",
+  "version": "1.0.0",
+  "description": "EditorPack Node backend and static frontend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,7 +1,4 @@
-/* ===========================
-   EditorPack — app.js
-   localStorage version
-   =========================== */
+const API = window.API_BASE || "/api";
 
 const GRAD_PAIRS = [
   ["#7c3aed", "#0ea5e9"],
@@ -11,6 +8,14 @@ const GRAD_PAIRS = [
   ["#10b981", "#0ea5e9"],
   ["#8b5cf6", "#ec4899"],
 ];
+
+let allPacks = [];
+let currentFilter = "All";
+let currentSearch = "";
+
+function parseApps(apps) {
+  return Array.isArray(apps) ? apps : JSON.parse(apps || "[]");
+}
 
 function packThumb(p) {
   if (p.img)
@@ -23,15 +28,12 @@ function isFree(p) {
   return !p.price || p.price === "Free" || p.price === "$0";
 }
 
-let currentFilter = "All";
-let currentSearch = "";
-
 function loadPacks() {
-  let packs = EP.getLivePacks();
+  let packs = [...allPacks];
 
   if (currentFilter === "Free") packs = packs.filter((p) => isFree(p));
   else if (currentFilter !== "All")
-    packs = packs.filter((p) => (p.apps || []).includes(currentFilter));
+    packs = packs.filter((p) => parseApps(p.apps).includes(currentFilter));
 
   if (currentSearch) {
     const q = currentSearch.toLowerCase();
@@ -66,7 +68,7 @@ function renderPackGrid(packs) {
       </div>
       <div class="pack-info">
         <div class="pack-app-tags">
-          ${(p.apps || []).map((a) => `<span class="app-tag">${a}</span>`).join("")}
+          ${parseApps(p.apps).map((a) => `<span class="app-tag">${a}</span>`).join("")}
         </div>
         <div class="pack-name">${p.name}</div>
         <div class="pack-desc">${p.desc}</div>
@@ -83,9 +85,9 @@ function renderPackGrid(packs) {
 }
 
 function openDetail(id) {
-  const user = EP.getUser();
+  const user = JSON.parse(localStorage.getItem("user") || "null");
   if (!user) {
-    localStorage.setItem("ep_redirect", `/pages/detail.html?id=${id}`);
+    localStorage.setItem("redirect", `/pages/detail.html?id=${id}`);
     window.location.href = "/pages/login.html";
     return;
   }
@@ -99,7 +101,6 @@ function setFilter(f, btn) {
     .forEach((b) => b.classList.remove("active"));
   if (btn) btn.classList.add("active");
 
-  // URL filter bo'lsa scroll
   const grid = document.getElementById("packGrid");
   if (grid) grid.scrollIntoView({ behavior: "smooth" });
 
@@ -112,26 +113,26 @@ function filterPacks(q) {
 }
 
 function updateCategoryCounts() {
-  const packs = EP.getLivePacks();
   const apps = ["CapCut", "After Effects", "Premiere", "DaVinci", "Final Cut"];
   apps.forEach((app) => {
     const el = document.getElementById(`count-${app}`);
     if (el)
       el.textContent =
-        packs.filter((p) => (p.apps || []).includes(app)).length + " packs";
+        allPacks.filter((p) => parseApps(p.apps).includes(app)).length +
+        " packs";
   });
   const freeEl = document.getElementById("count-Free");
   if (freeEl)
-    freeEl.textContent = packs.filter((p) => isFree(p)).length + " packs";
+    freeEl.textContent = allPacks.filter((p) => isFree(p)).length + " packs";
 }
 
 function loadTrending() {
   const grid = document.getElementById("trendingGrid");
   if (!grid) return;
-  const packs = EP.getLivePacks()
+  const packs = allPacks
     .filter((p) => p.badge === "hot" || p.badge === "new")
     .slice(0, 4);
-  const show = packs.length ? packs : EP.getLivePacks().slice(0, 4);
+  const show = packs.length ? packs : allPacks.slice(0, 4);
 
   grid.innerHTML = show
     .map(
@@ -143,7 +144,7 @@ function loadTrending() {
       </div>
       <div class="pack-info">
         <div class="pack-app-tags">
-          ${(p.apps || []).map((a) => `<span class="app-tag">${a}</span>`).join("")}
+          ${parseApps(p.apps).map((a) => `<span class="app-tag">${a}</span>`).join("")}
         </div>
         <div class="pack-name">${p.name}</div>
         <div class="pack-desc">${p.desc}</div>
@@ -158,19 +159,30 @@ function loadTrending() {
 }
 
 function loadStats() {
-  const packs = EP.getLivePacks();
   const totalEl = document.getElementById("statTotal");
   const freeEl = document.getElementById("statFree");
-  if (totalEl) totalEl.textContent = packs.length + "+";
-  if (freeEl) freeEl.textContent = packs.filter((p) => isFree(p)).length + "+";
+  if (totalEl) totalEl.textContent = allPacks.length + "+";
+  if (freeEl)
+    freeEl.textContent = allPacks.filter((p) => isFree(p)).length + "+";
 }
 
-// URL dan filter olish
 const urlParams = new URLSearchParams(window.location.search);
 const urlFilter = urlParams.get("filter");
 if (urlFilter) currentFilter = urlFilter;
 
-loadStats();
-loadTrending();
-loadPacks();
-renderNavUser();
+async function initPacksPage() {
+  try {
+    const res = await fetch(`${API}/packs`);
+    if (!res.ok) throw new Error("Packlar yuklanmadi");
+    allPacks = await res.json();
+  } catch (err) {
+    console.error(err);
+    allPacks = [];
+  }
+  loadStats();
+  loadTrending();
+  loadPacks();
+  renderNavUser();
+}
+
+initPacksPage();

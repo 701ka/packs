@@ -1,4 +1,4 @@
-const API = "http://localhost:4000/api";
+const API = window.API_BASE || "/api";
 
 function getUser() {
   return JSON.parse(localStorage.getItem("user") || "null");

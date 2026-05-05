@@ -1,4 +1,4 @@
-const API = "http://localhost:4000/api";
+const API = window.API_BASE || "/api";
 let allUsers = [],
   allPacks = [];
 let searchQuery = "",

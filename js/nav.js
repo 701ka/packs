@@ -4,7 +4,7 @@
    =========================== */
 
 function renderNavUser() {
-  const user = EP.getUser();
+  const user = JSON.parse(localStorage.getItem("user") || "null");
   const navUser = document.getElementById("navUser");
   if (!navUser) return;
 

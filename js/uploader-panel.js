@@ -1,4 +1,4 @@
-const API = "http://localhost:4000/api";
+const API = window.API_BASE || "/api";
 let myPacks = [];
 let editingId = null;
 let uploadedImgBase64 = null;
@@ -10,7 +10,7 @@ function getToken() {
   return localStorage.getItem("token");
 }
 
-const me = EP.getUser();
+const me = getUser();
 if (!me || (me.role !== "uploader" && me.role !== "admin")) {
   window.location.href = "/";
 }
@@ -58,10 +58,23 @@ function formatDate(dt) {
 }
 
 // ===== MY PACKS =====
-function fetchMyPacks() {
-  myPacks = EP.getPacks().filter((p) => p.uploaded_by == me.id);
-  updateStats();
-  renderMyPacks();
+async function fetchMyPacks() {
+  try {
+    const res = await fetch(`${API}/uploader/packs`, {
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    if (res.status === 401 || res.status === 403) {
+      window.location.href = "/pages/login.html";
+      return;
+    }
+    if (!res.ok) throw new Error("Packlar yuklanmadi");
+    myPacks = await res.json();
+    updateStats();
+    renderMyPacks();
+  } catch (err) {
+    document.getElementById("myPacksWrap").innerHTML =
+      `<div class="empty-state">Xatolik: ${err.message}</div>`;
+  }
 }
 
 function updateStats() {
@@ -343,10 +356,26 @@ async function submitPack() {
 
   try {
     if (editingId) {
-      EP.updatePack(editingId, packData);
+      const res = await fetch(`${API}/uploader/packs/${editingId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + getToken(),
+        },
+        body: JSON.stringify(packData),
+      });
+      if (!res.ok) throw new Error("Saqlanmadi");
       showToast("✅ Saqlandi!", "success");
     } else {
-      EP.addPack(packData);
+      const res = await fetch(`${API}/uploader/packs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + getToken(),
+        },
+        body: JSON.stringify(packData),
+      });
+      if (!res.ok) throw new Error("Yuborilmadi");
       showToast(
         me.role === "admin"
           ? "✅ Pack qo'shildi!"
@@ -357,7 +386,7 @@ async function submitPack() {
 
     resetForm();
     showPage("dashboard", document.querySelectorAll(".sidebar-item")[0]);
-    fetchMyPacks();
+    await fetchMyPacks();
   } catch (err) {
     showToast("Xatolik: " + err.message, "error");
   } finally {
@@ -373,15 +402,24 @@ async function deletePack(id) {
     confirmText: "O'chirish",
     cancelText: "Bekor",
     type: "danger",
-    onConfirm: () => {
-      EP.deletePack(id);
-      myPacks = myPacks.filter((x) => x.id != id);
-      updateStats();
-      renderMyPacks();
-      showToast("Pack o'chirildi.", "success");
+    onConfirm: async () => {
+      try {
+        const res = await fetch(`${API}/uploader/packs/${id}`, {
+          method: "DELETE",
+          headers: { Authorization: "Bearer " + getToken() },
+        });
+        if (!res.ok) throw new Error();
+        myPacks = myPacks.filter((x) => x.id != id);
+        updateStats();
+        renderMyPacks();
+        showToast("Pack o'chirildi.", "success");
+      } catch {
+        showToast("Xatolik yuz berdi!", "error");
+      }
     },
   });
 }
 
 // ===== INIT =====
 fetchMyPacks();
+
