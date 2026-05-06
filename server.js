@@ -10,6 +10,8 @@ const DB_FILE = path.join(DATA_DIR, "db.json");
 const JWT_SECRET = process.env.JWT_SECRET || "editorpack-dev-secret-change-me";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "karimovbdulloh@gmail.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const MONGODB_URI = process.env.MONGODB_URI;
+let mongoClientPromise = null;
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -146,9 +148,7 @@ function defaultPacks(adminId) {
   ];
 }
 
-function seedDb() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (fs.existsSync(DB_FILE)) return;
+function createDefaultDb() {
   const admin = {
     id: 1,
     name: "Admin",
@@ -157,15 +157,57 @@ function seedDb() {
     role: "admin",
     created_at: new Date().toISOString(),
   };
-  writeDb({ users: [admin], packs: defaultPacks(admin.id), subscribers: [] });
+  return { users: [admin], packs: defaultPacks(admin.id), subscribers: [] };
 }
 
-function readDb() {
-  seedDb();
+async function getMongoStateCollection() {
+  if (!MONGODB_URI) return null;
+  const { MongoClient } = require("mongodb");
+  if (!mongoClientPromise) {
+    const client = new MongoClient(MONGODB_URI);
+    mongoClientPromise = client.connect();
+  }
+  const client = await mongoClientPromise;
+  return client.db().collection("app_state");
+}
+
+async function seedDb() {
+  if (MONGODB_URI) {
+    const state = await getMongoStateCollection();
+    const exists = await state.findOne({ _id: "main" });
+    if (!exists) await state.insertOne({ _id: "main", ...createDefaultDb() });
+    return;
+  }
+
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (fs.existsSync(DB_FILE)) return;
+  await writeDb(createDefaultDb());
+}
+
+async function readDb() {
+  await seedDb();
+  if (MONGODB_URI) {
+    const state = await getMongoStateCollection();
+    const doc = await state.findOne({ _id: "main" });
+    return {
+      users: doc?.users || [],
+      packs: doc?.packs || [],
+      subscribers: doc?.subscribers || [],
+    };
+  }
   return JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
 }
 
-function writeDb(db) {
+async function writeDb(db) {
+  if (MONGODB_URI) {
+    const state = await getMongoStateCollection();
+    await state.updateOne(
+      { _id: "main" },
+      { $set: { users: db.users, packs: db.packs, subscribers: db.subscribers || [] } },
+      { upsert: true },
+    );
+    return;
+  }
   fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
 
@@ -240,7 +282,7 @@ function withUploader(pack, db) {
 }
 
 async function handleApi(req, res, url) {
-  const db = readDb();
+  const db = await readDb();
   const method = req.method;
   const parts = url.pathname.split("/").filter(Boolean).slice(1);
 
@@ -266,7 +308,7 @@ async function handleApi(req, res, url) {
       created_at: new Date().toISOString(),
     };
     db.users.push(user);
-    writeDb(db);
+    await writeDb(db);
     return send(res, 201, { token: signToken(user), user: publicUser(user) });
   }
 
@@ -337,7 +379,7 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: "Nomi, tavsif va download URL majburiy" });
     }
     db.packs.push(pack);
-    writeDb(db);
+    await writeDb(db);
     return send(res, 201, withUploader(pack, db));
   }
 
@@ -360,7 +402,7 @@ async function handleApi(req, res, url) {
       apps: Array.isArray(body.apps) ? body.apps : pack.apps,
       status: user.role === "admin" ? body.status || pack.status : "pending",
     });
-    writeDb(db);
+    await writeDb(db);
     return send(res, 200, withUploader(pack, db));
   }
 
@@ -373,7 +415,7 @@ async function handleApi(req, res, url) {
       return send(res, 403, { error: "Ruxsat yo'q" });
     }
     db.packs = db.packs.filter((p) => p.id != parts[2]);
-    writeDb(db);
+    await writeDb(db);
     return send(res, 200, { ok: true });
   }
 
@@ -392,7 +434,7 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: "Role noto'g'ri" });
     }
     user.role = body.role;
-    writeDb(db);
+    await writeDb(db);
     return send(res, 200, publicUser(user));
   }
 
@@ -403,7 +445,7 @@ async function handleApi(req, res, url) {
     if (user.email === ADMIN_EMAIL) return send(res, 400, { error: "Asosiy admin himoyalangan" });
     db.users = db.users.filter((u) => u.id != parts[2]);
     db.packs = db.packs.filter((p) => p.uploaded_by != parts[2]);
-    writeDb(db);
+    await writeDb(db);
     return send(res, 200, { ok: true });
   }
 
@@ -421,7 +463,7 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: "Status noto'g'ri" });
     }
     pack.status = body.status;
-    writeDb(db);
+    await writeDb(db);
     return send(res, 200, withUploader(pack, db));
   }
 
@@ -431,14 +473,14 @@ async function handleApi(req, res, url) {
     const pack = db.packs.find((p) => p.id == parts[2]);
     if (!pack) return notFound(res);
     Object.assign(pack, body, { apps: Array.isArray(body.apps) ? body.apps : pack.apps });
-    writeDb(db);
+    await writeDb(db);
     return send(res, 200, withUploader(pack, db));
   }
 
   if (method === "DELETE" && parts.length === 3 && parts[0] === "admin" && parts[1] === "packs") {
     if (!requireAdmin(req, res, db)) return;
     db.packs = db.packs.filter((p) => p.id != parts[2]);
-    writeDb(db);
+    await writeDb(db);
     return send(res, 200, { ok: true });
   }
 
@@ -447,7 +489,7 @@ async function handleApi(req, res, url) {
     const email = String(body.email || "").trim().toLowerCase();
     if (!email) return send(res, 400, { error: "Email kiriting" });
     if (!db.subscribers.includes(email)) db.subscribers.push(email);
-    writeDb(db);
+    await writeDb(db);
     return send(res, 201, { ok: true });
   }
 
@@ -474,7 +516,7 @@ function serveStatic(req, res, url) {
   });
 }
 
-const server = http.createServer(async (req, res) => {
+async function appHandler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
     if (url.pathname.startsWith("/api/")) {
@@ -486,7 +528,9 @@ const server = http.createServer(async (req, res) => {
     console.error(err);
     send(res, 500, { error: "Server xatoligi" });
   }
-});
+}
+
+const server = http.createServer(appHandler);
 
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
@@ -507,8 +551,12 @@ server.on("error", (err) => {
   process.exit(1);
 });
 
-server.listen(PORT, () => {
-  seedDb();
-  console.log(`EditorPack server: http://localhost:${PORT}`);
-  console.log(`Admin: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
-});
+if (require.main === module) {
+  server.listen(PORT, async () => {
+    await seedDb();
+    console.log(`EditorPack server: http://localhost:${PORT}`);
+    console.log(`Admin: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
+  });
+}
+
+module.exports = appHandler;

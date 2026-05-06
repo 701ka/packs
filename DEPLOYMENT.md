@@ -1,8 +1,9 @@
-# EditorPack Node Deployment
+# EditorPack Deployment
 
-## Local ishga tushirish
+## Local Ishga Tushirish
 
 ```bash
+npm install
 npm start
 ```
 
@@ -19,29 +20,35 @@ Email: karimovbdulloh@gmail.com
 Password: admin123
 ```
 
-## Muhim env sozlamalar
+## Vercel + MongoDB Atlas
 
-Online joylashda hosting panelida shularni qo'ying:
+Vercel project settings ichida `Environment Variables`ga shularni qo'shing:
 
 ```text
-PORT=4000
+MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/editorpack?appName=Cluster0
 JWT_SECRET=uzoq-va-maxfiy-random-string
 ADMIN_EMAIL=karimovbdulloh@gmail.com
 ADMIN_PASSWORD=kuchli-parol
 ```
 
-Ko'p hostinglar `PORT`ni o'zi beradi. Shunda `PORT`ni qo'lda berish shart emas.
+`MONGODB_URI` ichida o'zingizning MongoDB user va passwordingiz bo'ladi. Uni GitHubga yozmang.
 
-## Online qilish
+## Vercel Sozlamalari
 
-Render, Railway, VPS yoki boshqa Node.js hostingda:
+Build command:
 
-```bash
-npm start
+```text
+npm install
 ```
 
-Start command shu bo'ladi. Project build command talab qilmaydi, chunki frontend static HTML/CSS/JS.
+Output directory:
 
-## Ma'lumotlar qayerda turadi?
+```text
+.
+```
 
-Server ma'lumotlarni `data/db.json` ichida saqlaydi. Oddiy hostinglarda bu ishlaydi, lekin production uchun eng yaxshi variant keyin MongoDB yoki PostgreSQLga o'tish. Hozirgi yechim localStoragedan ancha to'g'ri: barcha user va packlar serverda bitta joyda saqlanadi.
+Start command kerak emas. Vercel `/api/*` so'rovlarni `api/index.js` orqali ishlatadi, HTML/CSS/JS fayllarni esa static qilib beradi.
+
+## Muhim
+
+Lokal ishlaganda `MONGODB_URI` bo'lmasa server `data/db.json`dan foydalanadi. Online deployda esa albatta `MONGODB_URI` qo'ying, shunda userlar va packlar MongoDB Atlasda saqlanadi.
