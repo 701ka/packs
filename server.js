@@ -315,20 +315,33 @@ function withUploader(pack, db) {
 }
 
 async function handleApi(req, res, url) {
-  const db = await readDb();
   const method = req.method;
   const parts = url.pathname.split("/").filter(Boolean).slice(1);
 
   if (method === "OPTIONS") return send(res, 200, {});
 
   if (method === "GET" && parts[0] === "health") {
+    let storage = "unknown";
+    let dbOk = false;
+    let dbError = null;
+    try {
+      await readDb();
+      dbOk = true;
+      storage = MONGODB_URI && !mongoDisabledReason ? "mongodb" : memoryDb ? "memory" : "file";
+    } catch (err) {
+      dbError = err.message;
+      storage = memoryDb ? "memory" : MONGODB_URI ? "mongodb-error" : "file-error";
+    }
     return send(res, 200, {
       ok: true,
-      storage: MONGODB_URI && !mongoDisabledReason ? "mongodb" : memoryDb ? "memory" : "file",
+      dbOk,
+      storage,
       mongoConfigured: Boolean(MONGODB_URI),
-      mongoError: mongoDisabledReason || null,
+      mongoError: mongoDisabledReason || dbError,
     });
   }
+
+  const db = await readDb();
 
   if (method === "POST" && parts.join("/") === "auth/signup") {
     const body = await parseBody(req);
@@ -568,7 +581,10 @@ async function appHandler(req, res) {
     serveStatic(req, res, url);
   } catch (err) {
     console.error(err);
-    send(res, 500, { error: "Server xatoligi" });
+    send(res, 500, {
+      error: "Server xatoligi",
+      detail: process.env.VERCEL ? err.message : undefined,
+    });
   }
 }
 
