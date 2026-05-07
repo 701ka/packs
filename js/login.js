@@ -121,7 +121,10 @@ let allPacks = [];
 async function loadLandingData() {
   try {
     const res = await fetch(`${API}/packs`);
-    allPacks = await res.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Packlar yuklanmadi");
+    if (!Array.isArray(data)) throw new Error("Packlar formati noto'g'ri");
+    allPacks = data;
 
     // Stats
     const totalEl = document.getElementById("statTotal");

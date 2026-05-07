@@ -12,6 +12,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "karimovbdulloh@gmail.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const MONGODB_URI = process.env.MONGODB_URI;
 let mongoClientPromise = null;
+let memoryDb = null;
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -179,6 +180,11 @@ async function seedDb() {
     return;
   }
 
+  if (process.env.VERCEL) {
+    if (!memoryDb) memoryDb = createDefaultDb();
+    return;
+  }
+
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (fs.existsSync(DB_FILE)) return;
   await writeDb(createDefaultDb());
@@ -195,6 +201,7 @@ async function readDb() {
       subscribers: doc?.subscribers || [],
     };
   }
+  if (memoryDb) return memoryDb;
   return JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
 }
 
@@ -206,6 +213,10 @@ async function writeDb(db) {
       { $set: { users: db.users, packs: db.packs, subscribers: db.subscribers || [] } },
       { upsert: true },
     );
+    return;
+  }
+  if (memoryDb) {
+    memoryDb = db;
     return;
   }
   fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));

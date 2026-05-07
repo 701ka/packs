@@ -13,12 +13,7 @@ Keyin browserda oching:
 http://localhost:4000
 ```
 
-Default admin:
 
-```text
-Email: karimovbdulloh@gmail.com
-Password: admin123
-```
 
 ## Vercel + MongoDB Atlas
 
