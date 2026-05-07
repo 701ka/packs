@@ -13,6 +13,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const MONGODB_URI = process.env.MONGODB_URI;
 let mongoClientPromise = null;
 let memoryDb = null;
+let mongoDisabledReason = "";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -162,7 +163,7 @@ function createDefaultDb() {
 }
 
 async function getMongoStateCollection() {
-  if (!MONGODB_URI) return null;
+  if (!MONGODB_URI || mongoDisabledReason) return null;
   const { MongoClient } = require("mongodb");
   if (!mongoClientPromise) {
     const client = new MongoClient(MONGODB_URI);
@@ -172,12 +173,25 @@ async function getMongoStateCollection() {
   return client.db().collection("app_state");
 }
 
+function useMemoryDb(reason) {
+  mongoDisabledReason = reason || "MongoDB ulanmadi";
+  if (!memoryDb) memoryDb = createDefaultDb();
+  console.error(`MongoDB disabled: ${mongoDisabledReason}`);
+}
+
 async function seedDb() {
   if (MONGODB_URI) {
-    const state = await getMongoStateCollection();
-    const exists = await state.findOne({ _id: "main" });
-    if (!exists) await state.insertOne({ _id: "main", ...createDefaultDb() });
-    return;
+    try {
+      const state = await getMongoStateCollection();
+      if (state) {
+        const exists = await state.findOne({ _id: "main" });
+        if (!exists) await state.insertOne({ _id: "main", ...createDefaultDb() });
+        return;
+      }
+    } catch (err) {
+      useMemoryDb(err.message);
+      return;
+    }
   }
 
   if (process.env.VERCEL) {
@@ -192,28 +206,36 @@ async function seedDb() {
 
 async function readDb() {
   await seedDb();
-  if (MONGODB_URI) {
-    const state = await getMongoStateCollection();
-    const doc = await state.findOne({ _id: "main" });
-    return {
-      users: doc?.users || [],
-      packs: doc?.packs || [],
-      subscribers: doc?.subscribers || [],
-    };
+  if (MONGODB_URI && !mongoDisabledReason) {
+    try {
+      const state = await getMongoStateCollection();
+      const doc = await state.findOne({ _id: "main" });
+      return {
+        users: doc?.users || [],
+        packs: doc?.packs || [],
+        subscribers: doc?.subscribers || [],
+      };
+    } catch (err) {
+      useMemoryDb(err.message);
+    }
   }
   if (memoryDb) return memoryDb;
   return JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
 }
 
 async function writeDb(db) {
-  if (MONGODB_URI) {
-    const state = await getMongoStateCollection();
-    await state.updateOne(
-      { _id: "main" },
-      { $set: { users: db.users, packs: db.packs, subscribers: db.subscribers || [] } },
-      { upsert: true },
-    );
-    return;
+  if (MONGODB_URI && !mongoDisabledReason) {
+    try {
+      const state = await getMongoStateCollection();
+      await state.updateOne(
+        { _id: "main" },
+        { $set: { users: db.users, packs: db.packs, subscribers: db.subscribers || [] } },
+        { upsert: true },
+      );
+      return;
+    } catch (err) {
+      useMemoryDb(err.message);
+    }
   }
   if (memoryDb) {
     memoryDb = db;
@@ -298,6 +320,15 @@ async function handleApi(req, res, url) {
   const parts = url.pathname.split("/").filter(Boolean).slice(1);
 
   if (method === "OPTIONS") return send(res, 200, {});
+
+  if (method === "GET" && parts[0] === "health") {
+    return send(res, 200, {
+      ok: true,
+      storage: MONGODB_URI && !mongoDisabledReason ? "mongodb" : memoryDb ? "memory" : "file",
+      mongoConfigured: Boolean(MONGODB_URI),
+      mongoError: mongoDisabledReason || null,
+    });
+  }
 
   if (method === "POST" && parts.join("/") === "auth/signup") {
     const body = await parseBody(req);
