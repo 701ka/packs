@@ -330,25 +330,28 @@ function quizRestart() {
 }
 
 // ===== NEWSLETTER =====
-function subscribeNewsletter(e) {
+async function subscribeNewsletter(e) {
   e.preventDefault();
   const email = document.getElementById("nlEmail").value;
   if (!email) return;
 
-  // Local storage da saqlash (backend endpoint bo'lmasa)
-  const subs = JSON.parse(localStorage.getItem("ep_subscribers") || "[]");
-  if (subs.includes(email)) {
-    showToast("Bu email allaqachon obuna bo'lgan!", "info");
-    return;
-  }
-  subs.push(email);
-  localStorage.setItem("ep_subscribers", JSON.stringify(subs));
+  try {
+    const res = await fetch(`${API}/newsletter`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Obuna saqlanmadi");
 
-  document.getElementById("nlEmail").value = "";
-  showToast(
-    "✅ Obuna bo'ldingiz! Yangi packlar haqida xabar oласиz.",
-    "success",
-  );
+    document.getElementById("nlEmail").value = "";
+    showToast(
+      "Obuna bo'ldingiz! Yangi packlar haqida xabar olasiz.",
+      "success",
+    );
+  } catch (err) {
+    showToast(err.message, "error");
+  }
 }
 
 function showToast(msg, type = "success") {
@@ -412,3 +415,4 @@ async function login(event) {
     errorEl.style.display = "block";
   }
 }
+
