@@ -1,0 +1,270 @@
+.scanner-page {
+  padding: 0 32px 70px;
+}
+
+.scanner-hero {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 64px 0 34px;
+  text-align: center;
+}
+
+.scanner-hero h1 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 48px;
+  line-height: 1.08;
+  margin-bottom: 14px;
+}
+
+.scanner-hero p {
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 610px;
+  margin: 0 auto;
+}
+
+.scanner-layout {
+  max-width: 1160px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.82fr);
+  gap: 18px;
+}
+
+.scanner-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.upload-zone {
+  min-height: 310px;
+  border: 1px dashed var(--border2);
+  border-radius: 8px;
+  background: var(--surface2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.upload-zone:hover,
+.upload-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(192, 132, 252, 0.08);
+}
+
+.upload-zone input {
+  display: none;
+}
+
+.upload-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #0ea5e9);
+  color: #fff;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.upload-title {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.upload-sub,
+.file-meta,
+.empty-text,
+.score-label {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.video-wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.video-wrap video {
+  width: 100%;
+  max-height: 440px;
+  background: #050506;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.scanner-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.scanner-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.scanner-progress {
+  margin-top: 16px;
+}
+
+.progress-top {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface3);
+}
+
+.progress-fill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(135deg, #7c3aed, #0ea5e9);
+  transition: width 0.2s;
+}
+
+.result-panel {
+  min-height: 420px;
+}
+
+.result-empty {
+  min-height: 385px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  border-radius: 50%;
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.empty-title,
+.result-title {
+  font-weight: 700;
+}
+
+.result-content {
+  display: grid;
+  gap: 18px;
+}
+
+.score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.score-title {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.score-ring {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 6px solid var(--accent);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.result-block {
+  display: grid;
+  gap: 10px;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.effect-chip {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.timeline-list,
+.recommend-list {
+  display: grid;
+  gap: 8px;
+}
+
+.timeline-item,
+.recommend-item {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.timeline-time {
+  color: var(--accent2);
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.timeline-label,
+.recommend-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.timeline-note,
+.recommend-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+@media (max-width: 860px) {
+  .scanner-page {
+    padding: 0 16px 48px;
+  }
+
+  .scanner-hero h1 {
+    font-size: 38px;
+  }
+
+  .scanner-layout {
+    grid-template-columns: 1fr;
+  }
+}

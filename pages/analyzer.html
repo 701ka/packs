@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Edit Scanner - EditorPack</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../style/style.css" />
+    <link rel="stylesheet" href="../style/notify.css" />
+    <link rel="stylesheet" href="../style/analyzer.css" />
+  </head>
+  <body>
+    <nav class="nav">
+      <a href="/" class="nav-logo">EditorPack</a>
+      <div class="nav-links">
+        <a class="nav-link" href="/pages/packs.html">Browse Packs</a>
+        <a class="nav-link active" href="/pages/analyzer.html">AI Scanner</a>
+        <a
+          class="nav-admin-btn"
+          href="/pages/admin-panel.html"
+          id="adminBtn"
+          style="display: none"
+          >Admin</a
+        >
+        <a
+          class="nav-admin-btn"
+          href="/pages/uploader-panel.html"
+          id="uploaderBtn"
+          style="display: none"
+          >Panel</a
+        >
+        <div class="nav-user" id="navUser"></div>
+      </div>
+    </nav>
+
+    <main class="scanner-page">
+      <section class="scanner-hero">
+        <div class="hero-badge"><span></span>Smart video analyzer</div>
+        <h1>AI Edit Scanner</h1>
+        <p>
+          Video yuklang. Scanner kadrlar va audiodan transition, effect va SFX
+          ehtimollarini topadi, keyin mos packlarni tavsiya qiladi.
+        </p>
+      </section>
+
+      <section class="scanner-layout">
+        <div class="scanner-panel">
+          <label class="upload-zone" id="uploadZone">
+            <input id="videoInput" type="file" accept="video/*" />
+            <span class="upload-icon">+</span>
+            <span class="upload-title">Video tanlang</span>
+            <span class="upload-sub">MP4, MOV yoki WEBM. 10-30 soniya ideal.</span>
+          </label>
+
+          <div class="video-wrap" id="videoWrap" hidden>
+            <video id="scanVideo" controls muted playsinline></video>
+            <div class="file-meta" id="fileMeta"></div>
+          </div>
+
+          <div class="scanner-actions">
+            <button class="btn-primary" id="analyzeBtn" disabled>
+              Analyze video
+            </button>
+            <button class="btn-secondary" id="resetBtn" disabled>Reset</button>
+          </div>
+
+          <div class="scanner-progress" id="progressWrap" hidden>
+            <div class="progress-top">
+              <span id="progressLabel">Analyzing...</span>
+              <span id="progressPct">0%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="scanner-panel result-panel">
+          <div class="result-empty" id="emptyState">
+            <div class="empty-icon">AI</div>
+            <div class="empty-title">Natija shu yerda chiqadi</div>
+            <div class="empty-text">
+              Scanner video ritmi, kadr almashishlari, yorug'lik o'zgarishi va
+              audio peaklarni tahlil qiladi.
+            </div>
+          </div>
+
+          <div class="result-content" id="resultContent" hidden>
+            <div class="score-row">
+              <div>
+                <div class="score-label">Edit intensity</div>
+                <div class="score-title" id="intensityLabel">Medium</div>
+              </div>
+              <div class="score-ring" id="scoreRing">0</div>
+            </div>
+
+            <div class="result-block">
+              <div class="result-title">Topilgan effektlar</div>
+              <div class="chip-list" id="effectChips"></div>
+            </div>
+
+            <div class="result-block">
+              <div class="result-title">Timeline taxminlari</div>
+              <div class="timeline-list" id="timelineList"></div>
+            </div>
+
+            <div class="result-block">
+              <div class="result-title">Mos packlar</div>
+              <div class="recommend-list" id="recommendList"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <canvas id="scanCanvas" hidden></canvas>
+    <script src="../js/notify.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/nav.js"></script>
+    <script src="../js/analyzer.js"></script>
+  </body>
+</html>
