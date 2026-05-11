@@ -11,8 +11,38 @@ function getToken() {
 }
 
 const me = getUser();
-if (!me || (me.role !== "uploader" && me.role !== "admin")) {
-  window.location.href = "/";
+if (!me) {
+  localStorage.setItem("redirect", "/pages/uploader-panel.html");
+  window.location.href = "/pages/login.html";
+  throw new Error("Login required");
+}
+
+function renderUploaderAccessPage(user) {
+  document.body.innerHTML = `
+    <main class="uploader-access-page">
+      <div class="uploader-access-box">
+        <a href="/" class="sidebar-logo">EditorPack</a>
+        <div class="uploader-access-kicker">Uploader access</div>
+        <h1>Uploader bo'lish kerak</h1>
+        <p>
+          Salom, ${user.name || "user"}. Siz oddiy user sifatida kirgansiz.
+          Pack joylash uchun admin bilan bog'lanib, akkauntingizni uploader
+          roliga o'tkazishni so'rang.
+        </p>
+        <div class="uploader-access-actions">
+          <a class="btn-save" href="mailto:karimovbdulloh@gmail.com?subject=EditorPack uploader role request">
+            Adminga yozish
+          </a>
+          <a class="btn-cancel" href="/">Saytga qaytish</a>
+        </div>
+      </div>
+    </main>
+  `;
+}
+
+if (me.role !== "uploader" && me.role !== "admin") {
+  renderUploaderAccessPage(me);
+  throw new Error("Uploader role required");
 }
 
 function initials(name) {

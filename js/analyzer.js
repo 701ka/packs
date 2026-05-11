@@ -80,6 +80,11 @@ function analyzeFrameData(data, width, height) {
   let edgeBrightness = 0;
   let centerCount = 0;
   let edgeCount = 0;
+  let darkPixels = 0;
+  let brightPixels = 0;
+  let topBottomDark = 0;
+  let topBottomCount = 0;
+  const lumaHist = new Array(16).fill(0);
   const gray = new Uint8Array(width * height);
 
   for (let i = 0, p = 0; i < data.length; i += 4, p++) {
@@ -92,11 +97,19 @@ function analyzeFrameData(data, width, height) {
     const x = p % width;
     const y = Math.floor(p / width);
     const inCenter = x > width * 0.3 && x < width * 0.7 && y > height * 0.3 && y < height * 0.7;
+    const inLetterboxArea = y < height * 0.12 || y > height * 0.88;
 
     gray[p] = value;
     brightness += value;
     saturation += max === 0 ? 0 : (max - min) / max;
     warmth += (r - b) / 255;
+    lumaHist[Math.min(15, Math.floor(value / 16))]++;
+    if (value < 38) darkPixels++;
+    if (value > 218) brightPixels++;
+    if (inLetterboxArea) {
+      topBottomCount++;
+      if (value < 42) topBottomDark++;
+    }
 
     if (inCenter) {
       centerBrightness += value;
@@ -126,6 +139,10 @@ function analyzeFrameData(data, width, height) {
     saturation: saturation / gray.length,
     warmth: warmth / gray.length,
     centerBias: centerBrightness / Math.max(centerCount, 1) - edgeBrightness / Math.max(edgeCount, 1),
+    darkRatio: darkPixels / gray.length,
+    brightRatio: brightPixels / gray.length,
+    letterboxRatio: topBottomDark / Math.max(topBottomCount, 1),
+    lumaHist: lumaHist.map((count) => count / gray.length),
     sharpness: edgeEnergy / ((width / 2) * (height / 2)),
     gray,
   };
@@ -137,6 +154,15 @@ function frameDiff(a, b) {
   const step = 4;
   for (let i = 0; i < a.length; i += step) diff += Math.abs(a[i] - b[i]);
   return diff / (a.length / step);
+}
+
+function histogramDiff(a, b) {
+  if (!a || !b) return 0;
+  let diff = 0;
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    diff += Math.abs(a[i] - b[i]);
+  }
+  return diff;
 }
 
 function estimateMotion(prev, current, width, height) {
@@ -178,6 +204,35 @@ function estimateMotion(prev, current, width, height) {
   };
 }
 
+function estimateRegionDiff(prev, current, width, height) {
+  if (!prev || !current) return { center: 0, edge: 0 };
+  let center = 0;
+  let centerCount = 0;
+  let edge = 0;
+  let edgeCount = 0;
+  const step = 4;
+
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      const i = y * width + x;
+      const value = Math.abs(prev[i] - current[i]);
+      const inCenter = x > width * 0.28 && x < width * 0.72 && y > height * 0.28 && y < height * 0.72;
+      if (inCenter) {
+        center += value;
+        centerCount++;
+      } else {
+        edge += value;
+        edgeCount++;
+      }
+    }
+  }
+
+  return {
+    center: center / Math.max(centerCount, 1),
+    edge: edge / Math.max(edgeCount, 1),
+  };
+}
+
 async function sampleVideoFrames(video) {
   const duration = Math.min(video.duration || 0, 45);
   const sampleCount = Math.max(12, Math.min(72, Math.round(duration * 2.3)));
@@ -195,6 +250,7 @@ async function sampleVideoFrames(video) {
     const image = ctx.getImageData(0, 0, width, height);
     const stats = analyzeFrameData(image.data, width, height);
     const motion = estimateMotion(prevGray, stats.gray, width, height);
+    const regionDiff = estimateRegionDiff(prevGray, stats.gray, width, height);
     frames.push({
       time,
       brightness: stats.brightness,
@@ -202,9 +258,15 @@ async function sampleVideoFrames(video) {
       saturation: stats.saturation,
       warmth: stats.warmth,
       centerBias: stats.centerBias,
+      darkRatio: stats.darkRatio,
+      brightRatio: stats.brightRatio,
+      letterboxRatio: stats.letterboxRatio,
+      hist: stats.lumaHist,
+      histDiff: histogramDiff(frames.at(-1)?.hist, stats.lumaHist),
       sharpness: stats.sharpness,
       diff: frameDiff(prevGray, stats.gray),
       motion,
+      regionDiff,
     });
     prevGray = stats.gray;
     setProgress(15 + (i / sampleCount) * 55, "Kadrlar tekshirilmoqda...");
@@ -216,7 +278,7 @@ async function sampleVideoFrames(video) {
 
 async function analyzeAudio(file) {
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  if (!AudioCtx) return { peaks: [], rises: [], energy: 0 };
+  if (!AudioCtx) return { peaks: [], rises: [], drops: [], silence: [], energy: 0 };
 
   try {
     const buffer = await file.arrayBuffer();
@@ -248,6 +310,8 @@ async function analyzeAudio(file) {
       .slice(0, 10);
 
     const rises = [];
+    const drops = [];
+    const silence = [];
     for (let i = 3; i < windows.length; i++) {
       const a = windows[i - 3].rms;
       const b = windows[i - 2].rms;
@@ -259,11 +323,122 @@ async function analyzeAudio(file) {
           confidence: Math.min(92, Math.round((d / Math.max(avg, 0.001)) * 20)),
         });
       }
+
+      if (a > avg * 1.25 && b > avg * 1.05 && c < avg * 0.7 && d < avg * 0.55) {
+        drops.push({
+          time: windows[i - 1].time,
+          confidence: Math.min(92, Math.round((a / Math.max(d, 0.001)) * 14)),
+        });
+      }
     }
 
-    return { peaks, rises: rises.slice(0, 6), energy: avg };
+    windows.forEach((w) => {
+      if (w.rms < avg * 0.22 && avg > 0.002) {
+        silence.push({
+          time: w.time,
+          confidence: Math.min(88, Math.round((1 - w.rms / Math.max(avg, 0.001)) * 90)),
+        });
+      }
+    });
+
+    return {
+      peaks,
+      rises: rises.slice(0, 6),
+      drops: drops.slice(0, 6),
+      silence: silence.slice(0, 8),
+      energy: avg,
+    };
   } catch {
-    return { peaks: [], rises: [], energy: 0 };
+    return { peaks: [], rises: [], drops: [], silence: [], energy: 0 };
+  }
+}
+
+function countAlternations(values) {
+  let changes = 0;
+  let lastSign = 0;
+  for (let i = 1; i < values.length; i++) {
+    const sign = Math.sign(values[i] - values[i - 1]);
+    if (sign && lastSign && sign !== lastSign) changes++;
+    if (sign) lastSign = sign;
+  }
+  return changes;
+}
+
+function percentile(values, p) {
+  const clean = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+  if (!clean.length) return 0;
+  const index = Math.min(clean.length - 1, Math.max(0, Math.floor((clean.length - 1) * p)));
+  return clean[index];
+}
+
+function detectSceneChanges(frames) {
+  if (frames.length < 3) return [];
+
+  const diffs = frames.slice(1).map((frame) => frame.diff);
+  const histDiffs = frames.slice(1).map((frame) => frame.histDiff);
+  const diffP85 = percentile(diffs, 0.85);
+  const diffP95 = percentile(diffs, 0.95);
+  const histP85 = percentile(histDiffs, 0.85);
+  const avgDiff = diffs.reduce((sum, value) => sum + value, 0) / Math.max(diffs.length, 1);
+  const avgHist = histDiffs.reduce((sum, value) => sum + value, 0) / Math.max(histDiffs.length, 1);
+  const sceneChanges = [];
+
+  for (let i = 1; i < frames.length; i++) {
+    const frame = frames[i];
+    const prev = frames[i - 1];
+    const next = frames[i + 1];
+    const brightnessJump = Math.abs(frame.brightness - prev.brightness);
+    const isFlashFrame = frame.brightRatio > 0.46 || frame.darkRatio > 0.64;
+    const reboundsNext =
+      next &&
+      Math.abs(next.brightness - prev.brightness) < Math.max(20, brightnessJump * 0.42) &&
+      next.histDiff > Math.max(0.2, avgHist * 1.2);
+    const isLikelyOneFrameFlash = isFlashFrame && reboundsNext;
+    const strongDiff = frame.diff > Math.max(24, avgDiff * 2.1, diffP85 * 1.25);
+    const strongHist = frame.histDiff > Math.max(0.34, avgHist * 1.9, histP85 * 1.15);
+    const veryStrongDiff = frame.diff > Math.max(38, diffP95 * 0.92);
+    const isFadeStep = brightnessJump > 18 && frame.histDiff < Math.max(0.52, avgHist * 1.35);
+    const enoughGap = !sceneChanges.length || frame.time - sceneChanges[sceneChanges.length - 1].time > 0.7;
+
+    if (!enoughGap || isLikelyOneFrameFlash || isFadeStep) continue;
+
+    if ((strongDiff && strongHist) || (veryStrongDiff && frame.histDiff > 0.28)) {
+      sceneChanges.push({
+        time: frame.time,
+        confidence: Math.min(96, Math.round(58 + frame.diff * 0.45 + frame.histDiff * 26)),
+      });
+    }
+  }
+
+  return sceneChanges;
+}
+
+function detectSequences(frames, addEffect, addEvent) {
+  for (let i = 2; i < frames.length; i++) {
+    const a = frames[i - 2];
+    const b = frames[i - 1];
+    const c = frames[i];
+    const down = a.brightness > b.brightness + 18 && b.brightness > c.brightness + 14;
+    const up = a.brightness + 18 < b.brightness && b.brightness + 14 < c.brightness;
+    const smooth = a.histDiff < 0.55 && b.histDiff < 0.55 && c.diff < 34;
+
+    if (down && smooth && c.brightness < 82) {
+      const confidence = 62 + Math.min(28, (a.brightness - c.brightness) * 0.45);
+      addEffect("Fade to black", confidence, "Brightness ketma-ket pasaygan va scene keskin almashmagan.");
+      addEvent(c.time, "Fade to black", "Video asta qorayib borgan.", confidence);
+    }
+
+    if (up && smooth && c.brightness > 145) {
+      const confidence = 60 + Math.min(28, (c.brightness - a.brightness) * 0.42);
+      addEffect("Fade in / fade to white", confidence, "Brightness ketma-ket ko'tarilgan.");
+      addEvent(c.time, "Fade in / fade to white", "Video asta yorishib borgan.", confidence);
+    }
+  }
+
+  const alternations = countAlternations(frames.map((f) => f.brightness));
+  const brightJumps = frames.filter((f, i) => i > 0 && Math.abs(f.brightness - frames[i - 1].brightness) > 34).length;
+  if (alternations >= 5 && brightJumps >= 4) {
+    addEffect("Strobe / flicker effect", 66 + Math.min(24, brightJumps * 4), "Brightness tez-tez yuqori-past almashgan.");
   }
 }
 
@@ -275,6 +450,9 @@ function classifyVideo(frames, audio) {
   const avgSaturation = frames.reduce((sum, f) => sum + f.saturation, 0) / Math.max(frames.length, 1);
   const avgWarmth = frames.reduce((sum, f) => sum + f.warmth, 0) / Math.max(frames.length, 1);
   const avgMotion = frames.reduce((sum, f) => sum + f.motion.score, 0) / Math.max(frames.length, 1);
+  const avgHistDiff = frames.reduce((sum, f) => sum + f.histDiff, 0) / Math.max(frames.length, 1);
+  const letterboxFrames = frames.filter((f) => f.letterboxRatio > 0.82).length;
+  const sceneChanges = detectSceneChanges(frames);
   const events = [];
   const effects = new Map();
 
@@ -300,12 +478,13 @@ function classifyVideo(frames, audio) {
     const saturationJump = Math.abs(frame.saturation - prev.saturation);
     const contrastJump = Math.abs(frame.contrast - prev.contrast);
     const motionScore = frame.motion.score;
+    const edgeCenterGap = frame.regionDiff.edge - frame.regionDiff.center;
     const direction = Math.abs(frame.motion.dx) > Math.abs(frame.motion.dy)
       ? frame.motion.dx > 0 ? "right" : "left"
       : frame.motion.dy > 0 ? "down" : "up";
 
-    if (frame.diff > avgDiff * 2.15 && frame.diff > 16) {
-      const confidence = 58 + (frame.diff / Math.max(avgDiff, 1)) * 12;
+    if ((frame.diff > avgDiff * 2.15 && frame.diff > 16) || (frame.histDiff > avgHistDiff * 2.25 && frame.histDiff > 0.42)) {
+      const confidence = 58 + (frame.diff / Math.max(avgDiff, 1)) * 10 + frame.histDiff * 18;
       addEffect("Hard cut / fast transition", confidence, "Kadrlar orasidagi farq keskin oshgan.");
       addEvent(
         frame.time,
@@ -324,6 +503,18 @@ function classifyVideo(frames, audio) {
         "Yorug'lik keskin oshgan, flash transition ehtimoli bor.",
         confidence,
       );
+    }
+
+    if (frame.darkRatio > 0.62 && prev.darkRatio < 0.38 && frame.diff > avgDiff * 1.15) {
+      const confidence = 60 + frame.darkRatio * 34;
+      addEffect("Black flash / dip to black", confidence, "Bir frame juda qorong'i bo'lib qolgan.");
+      addEvent(frame.time, "Black flash", "Dip-to-black transition ehtimoli bor.", confidence);
+    }
+
+    if (frame.brightRatio > 0.48 && prev.brightRatio < 0.24 && frame.diff > avgDiff * 1.1) {
+      const confidence = 58 + frame.brightRatio * 38;
+      addEffect("White flash", confidence, "Frame ichida oq/yorqin piksel ulushi keskin ko'paygan.");
+      addEvent(frame.time, "White flash", "White flash transition ehtimoli bor.", confidence);
     }
 
     if (frame.diff > avgDiff * 1.45 && sharpnessDrop > avgSharpness * 0.12) {
@@ -352,6 +543,12 @@ function classifyVideo(frames, audio) {
       addEffect("Speed ramp", 55 + frame.diff * 0.45, "Brightness, motion va frame diff birga o'zgargan.");
     }
 
+    if (edgeCenterGap > 8 && motionScore > avgMotion * 1.05 && frame.diff > avgDiff * 1.05) {
+      const confidence = 54 + edgeCenterGap * 1.9 + motionScore * 0.25;
+      addEffect("Zoom / punch-in transition", confidence, "Chetlarda o'zgarish markazdan kuchliroq, zoom/punch-in ehtimoli bor.");
+      addEvent(frame.time, "Zoom / punch-in", "Kadr zoom yoki punch-in transitionga o'xshaydi.", confidence);
+    }
+
     if (frame.diff > avgDiff * 1.35 && saturationJump > 0.12 && contrastJump > 6) {
       const confidence = 56 + saturationJump * 120 + contrastJump;
       addEffect("Glitch / RGB-style transition", confidence, "Rang va contrast birdan sakragan.");
@@ -363,6 +560,8 @@ function classifyVideo(frames, audio) {
       );
     }
   });
+
+  detectSequences(frames, addEffect, addEvent);
 
   const motionDirections = frames
     .filter((f) => f.motion.score > Math.max(24, avgMotion * 1.35))
@@ -392,12 +591,38 @@ function classifyVideo(frames, audio) {
     );
   });
 
+  audio.drops.forEach((drop) => {
+    addEffect("Audio drop / bass stop", drop.confidence || 62, "Audio energiya keskin pasaygan.");
+    addEvent(
+      drop.time,
+      "Audio drop",
+      "Bass stop, silence cut yoki dramatic pause ishlatilgan bo'lishi mumkin.",
+      drop.confidence || 62,
+    );
+  });
+
+  audio.silence.forEach((silent) => {
+    const nearbyCut = events.some((event) => Math.abs(event.time - silent.time) < 0.28 && /cut|flash|zoom|glitch|Tez/.test(event.label));
+    if (nearbyCut) {
+      addEffect("Silence cut", silent.confidence || 60, "Visual cut atrofida audio deyarli jim bo'lgan.");
+    }
+  });
+
+  const beatMatchedCuts = events.filter((event) =>
+    audio.peaks.some((peak) => Math.abs(peak.time - event.time) < 0.24),
+  );
+  if (beatMatchedCuts.length >= 2) {
+    addEffect("Beat-matched cuts", 66 + beatMatchedCuts.length * 6, "Visual transitionlar audio hitlar bilan mos tushgan.");
+  }
+
   if (avgSharpness < 14) addEffect("Soft blur / glow look", 58 + (14 - avgSharpness) * 3, "Umumiy sharpness past.");
   if (avgBrightness < 82 && avgContrast > 24) addEffect("Dark cinematic grade", 67, "Past brightness va kuchli contrast.");
   if (avgBrightness > 155) addEffect("Bright clean grade", 62, "Video umumiy yorqin.");
   if (avgSaturation > 0.42) addEffect("High saturation color grade", 60 + avgSaturation * 40, "Ranglar kuchli to'yingan.");
   if (avgWarmth > 0.08) addEffect("Warm color grade", 58 + avgWarmth * 160, "Qizil/issiq ranglar ustun.");
   if (avgWarmth < -0.08) addEffect("Cool blue grade", 58 + Math.abs(avgWarmth) * 160, "Ko'k/sovuq ranglar ustun.");
+  if (avgContrast > 36 && avgSaturation < 0.24) addEffect("Moody desaturated grade", 64, "Contrast yuqori, saturation past.");
+  if (letterboxFrames >= frames.length * 0.55) addEffect("Cinematic letterbox", 72, "Yuqori/pastki qoraliklar letterboxga o'xshaydi.");
   if (audio.peaks.length >= 3) addEffect("Beat-synced edit", 65 + audio.peaks.length * 4, "Bir nechta audio hit topildi.");
   if (effects.size === 0) addEffect("Simple clean edit", 55, "Kuchli transition signallari topilmadi.");
 
@@ -416,6 +641,8 @@ function classifyVideo(frames, audio) {
       avgContrast: Math.round(avgContrast),
       avgSaturation: Math.round(avgSaturation * 100),
       audioHits: audio.peaks.length,
+      sceneChanges: sceneChanges.length,
+      audioDrops: audio.drops.length,
     },
   };
 }
@@ -430,6 +657,8 @@ function scorePack(pack, effects) {
     ["capcut", ["capcut", "tiktok", "reels"]],
     ["sfx", ["sfx", "whoosh", "hit", "audio", "beat"]],
     ["flash", ["flash", "light", "glow"]],
+    ["zoom", ["zoom", "punch"]],
+    ["glitch", ["glitch", "rgb", "flicker"]],
   ];
 
   return effects.reduce((score, effect) => {
@@ -454,7 +683,19 @@ async function loadPacks() {
 function renderResults(result) {
   document.getElementById("scoreRing").textContent = result.intensity;
   document.getElementById("intensityLabel").textContent = result.label;
-  document.getElementById("effectChips").innerHTML = result.effects
+  const topEffects = result.effects.slice(0, 4);
+  const topEvents = result.events.slice(0, 3);
+  const topNames = topEffects.map((effect) => effect.name).join(", ");
+  document.getElementById("summaryBox").innerHTML = `
+    <div class="summary-main">${result.label} intensity edit</div>
+    <div class="summary-text">
+      Most likely: ${topNames || "Simple clean edit"}. Found
+      ${result.metrics.sceneChanges} scene change${result.metrics.sceneChanges === 1 ? "" : "s"}
+      and ${result.metrics.audioHits} audio hit${result.metrics.audioHits === 1 ? "" : "s"}.
+    </div>
+  `;
+
+  document.getElementById("effectChips").innerHTML = topEffects
     .map(
       (effect) => `
         <span class="effect-chip" title="${effect.reason}">
@@ -465,26 +706,8 @@ function renderResults(result) {
     )
     .join("");
 
-  const metrics = [
-    ["Frame diff", result.metrics.avgDiff],
-    ["Motion", result.metrics.avgMotion],
-    ["Contrast", result.metrics.avgContrast],
-    ["Saturation", result.metrics.avgSaturation + "%"],
-    ["Audio hits", result.metrics.audioHits],
-  ];
-  document.getElementById("metricGrid").innerHTML = metrics
-    .map(
-      ([label, value]) => `
-        <div class="metric-card">
-          <div class="metric-value">${value}</div>
-          <div class="metric-label">${label}</div>
-        </div>
-      `,
-    )
-    .join("");
-
-  document.getElementById("timelineList").innerHTML = result.events.length
-    ? result.events
+  document.getElementById("timelineList").innerHTML = topEvents.length
+    ? topEvents
         .map(
           (event) => `
             <div class="timeline-item">
@@ -497,7 +720,7 @@ function renderResults(result) {
         .join("")
     : `<div class="timeline-item">
         <div class="timeline-label">Aniq transition topilmadi</div>
-        <div class="timeline-note">Video silliq yoki kam effektli bo'lishi mumkin.</div>
+        <div class="timeline-note">Video silliq yoki kam effektli bo'lishi mumkin. Full analysis obuna bilan chiqadi.</div>
       </div>`;
 
   const recommended = allPacks

@@ -557,6 +557,51 @@ textarea.form-input {
   overflow: hidden;
 }
 
+.uploader-access-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.uploader-access-box {
+  width: min(560px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 32px;
+  color: var(--text);
+}
+
+.uploader-access-kicker {
+  margin-top: 24px;
+  color: var(--accent2);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.uploader-access-box h1 {
+  margin-top: 8px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+.uploader-access-box p {
+  margin-top: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.uploader-access-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
 .upload-preview-col::-webkit-scrollbar {
   display: none;
 }

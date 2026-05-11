@@ -94,6 +94,71 @@ function openDetail(id) {
   window.location.href = `/pages/detail.html?id=${id}`;
 }
 
+function prefLang() {
+  const lang = localStorage.getItem("editorpack_lang");
+  return ["uz", "ru", "en"].includes(lang) ? lang : "uz";
+}
+
+function roleText(key) {
+  const lang = prefLang();
+  const dict = {
+    loginFirst: {
+      uz: "Uploader panelga kirish uchun avval login qiling.",
+      ru: "Чтобы открыть uploader-панель, сначала войдите в аккаунт.",
+      en: "Log in first to open the uploader panel.",
+    },
+    title: {
+      uz: "Uploader bo'lish kerak",
+      ru: "Нужен статус uploader",
+      en: "Uploader access required",
+    },
+    message: {
+      uz: "Siz oddiy user sifatida kirgansiz. Pack joylash uchun admin bilan bog'lanib, akkauntingizni uploader roliga o'tkazishni so'rang.",
+      ru: "Вы вошли как обычный пользователь. Чтобы публиковать паки, свяжитесь с админом и попросите перевести аккаунт в роль uploader.",
+      en: "You are logged in as a regular user. To publish packs, contact the admin and ask to switch your account to the uploader role.",
+    },
+    contact: {
+      uz: "Adminga yozish",
+      ru: "Написать админу",
+      en: "Contact admin",
+    },
+    close: {
+      uz: "Yopish",
+      ru: "Закрыть",
+      en: "Close",
+    },
+  };
+  return dict[key][lang];
+}
+
+function handleUploaderAccess() {
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  if (!user) {
+    localStorage.setItem("redirect", "/pages/uploader-panel.html");
+    showToast(roleText("loginFirst"), "info");
+    window.location.href = "/pages/login.html";
+    return;
+  }
+
+  if (user.role === "uploader" || user.role === "admin") {
+    window.location.href = "/pages/uploader-panel.html";
+    return;
+  }
+
+  showConfirm({
+    title: roleText("title"),
+    message: roleText("message"),
+    confirmText: roleText("contact"),
+    cancelText: roleText("close"),
+    type: "info",
+    onConfirm: () => {
+      window.location.href =
+        "mailto:karimovbdulloh@gmail.com?subject=EditorPack uploader role request";
+    },
+  });
+}
+
 function setFilter(f, btn) {
   currentFilter = f;
   document
