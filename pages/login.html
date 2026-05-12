@@ -29,13 +29,23 @@
             placeholder="Email"
             required
           />
-          <input
-            class="auth-input"
-            type="password"
-            id="password"
-            placeholder="Parol"
-            required
-          />
+          <div class="password-field">
+            <input
+              class="auth-input"
+              type="password"
+              id="password"
+              placeholder="Parol"
+              required
+            />
+            <button
+              class="password-toggle"
+              type="button"
+              aria-label="Show password"
+              onclick="togglePassword(this, 'password')"
+            >
+              eye
+            </button>
+          </div>
           <button class="auth-btn" type="submit">Kirish</button>
         </form>
         <div class="auth-link">
@@ -46,6 +56,7 @@
     <script src="../js/notify.js"></script>
     <script src="../js/config.js"></script>
     <script src="../js/preferences.js"></script>
+    <script src="../js/password-toggle.js"></script>
     <script src="../js/login.js"></script>
   </body>
 </html>
