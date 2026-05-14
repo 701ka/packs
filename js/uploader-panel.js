@@ -107,6 +107,15 @@ async function fetchMyPacks() {
   }
 }
 
+async function apiError(res, fallback) {
+  try {
+    const data = await res.json();
+    return new Error(data.error || data.detail || fallback);
+  } catch {
+    return new Error(fallback);
+  }
+}
+
 function updateStats() {
   document.getElementById("myTotal").textContent = myPacks.length;
   document.getElementById("myLive").textContent = myPacks.filter(
@@ -394,7 +403,7 @@ async function submitPack() {
         },
         body: JSON.stringify(packData),
       });
-      if (!res.ok) throw new Error("Saqlanmadi");
+      if (!res.ok) throw await apiError(res, "Saqlanmadi");
       showToast("✅ Saqlandi!", "success");
     } else {
       const res = await fetch(`${API}/uploader/packs`, {
@@ -405,7 +414,7 @@ async function submitPack() {
         },
         body: JSON.stringify(packData),
       });
-      if (!res.ok) throw new Error("Yuborilmadi");
+      if (!res.ok) throw await apiError(res, "Yuborilmadi");
       showToast(
         me.role === "admin"
           ? "✅ Pack qo'shildi!"

@@ -15,6 +15,15 @@ function getToken() {
 const me = getUser();
 if (!me || me.role !== "admin") window.location.href = "/";
 
+async function apiError(res, fallback) {
+  try {
+    const data = await res.json();
+    return new Error(data.error || data.detail || fallback);
+  } catch {
+    return new Error(fallback);
+  }
+}
+
 function initials(name) {
   return name
     ? name
@@ -149,14 +158,14 @@ async function changeRole(id, role) {
       },
       body: JSON.stringify({ role }),
     });
-    if (!res.ok) throw new Error();
+    if (!res.ok) throw await apiError(res, "Status o'zgarmadi");
     const u = allUsers.find((x) => x.id === id);
     if (u) u.role = role;
     updateStats();
     renderTable();
     showToast("Role muvaffaqiyatli o'zgartirildi!", "success");
-  } catch {
-    showToast("Xatolik yuz berdi!", "error");
+  } catch (err) {
+    showToast("Xatolik: " + err.message, "error");
   }
 }
 
@@ -173,13 +182,13 @@ async function deleteUser(id) {
           method: "DELETE",
           headers: { Authorization: "Bearer " + getToken() },
         });
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw await apiError(res, "Pack o'chirilmadi");
         allUsers = allUsers.filter((x) => x.id !== id);
         updateStats();
         renderTable();
         showToast("Foydalanuvchi o'chirildi.", "success");
-      } catch {
-        showToast("Xatolik yuz berdi!", "error");
+      } catch (err) {
+        showToast("Xatolik: " + err.message, "error");
       }
     },
   });
@@ -314,7 +323,7 @@ async function changePackStatus(id, status) {
       },
       body: JSON.stringify({ status }),
     });
-    if (!res.ok) throw new Error();
+    if (!res.ok) throw await apiError(res, "Pack saqlanmadi");
     const p = allPacks.find((x) => x.id === id);
     if (p) p.status = status;
     updatePackStats();
@@ -327,8 +336,8 @@ async function changePackStatus(id, status) {
           : "Pack pending qilindi.",
       "success",
     );
-  } catch {
-    showToast("Xatolik yuz berdi!", "error");
+  } catch (err) {
+    showToast("Xatolik: " + err.message, "error");
   }
 }
 
@@ -350,8 +359,8 @@ async function deletePack(id) {
         updatePackStats();
         renderPacksTable();
         showToast("Pack o'chirildi.", "success");
-      } catch {
-        showToast("Xatolik yuz berdi!", "error");
+      } catch (err) {
+        showToast("Xatolik: " + err.message, "error");
       }
     },
   });
@@ -401,8 +410,8 @@ async function savePack() {
     document.getElementById("editModal").style.display = "none";
     fetchPacks();
     showToast("Pack saqlandi!", "success");
-  } catch {
-    showToast("Xatolik!", "error");
+  } catch (err) {
+    showToast("Xatolik: " + err.message, "error");
   }
 }
 

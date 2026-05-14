@@ -3,6 +3,23 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
+function loadLocalEnv() {
+  const envFile = path.join(__dirname, ".env");
+  if (!fs.existsSync(envFile)) return;
+  const lines = fs.readFileSync(envFile, "utf8").split(/\r?\n/);
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) return;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) return;
+    const key = trimmed.slice(0, eq).trim();
+    const value = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
+    if (key && process.env[key] === undefined) process.env[key] = value;
+  });
+}
+
+loadLocalEnv();
+
 const PORT = process.env.PORT || 4000;
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
@@ -179,6 +196,18 @@ function useMemoryDb(reason) {
   console.error(`MongoDB disabled: ${mongoDisabledReason}`);
 }
 
+function isEphemeralServer() {
+  return Boolean(process.env.VERCEL);
+}
+
+function assertWritableStorage() {
+  if (isEphemeralServer() && (!MONGODB_URI || mongoDisabledReason)) {
+    throw new Error(
+      "Deployda data saqlanishi uchun MONGODB_URI kerak. Hozirgi storage vaqtinchalik, yozish bloklandi.",
+    );
+  }
+}
+
 async function seedDb() {
   if (MONGODB_URI) {
     try {
@@ -224,6 +253,7 @@ async function readDb() {
 }
 
 async function writeDb(db) {
+  assertWritableStorage();
   if (MONGODB_URI && !mongoDisabledReason) {
     try {
       const state = await getMongoStateCollection();
@@ -241,7 +271,10 @@ async function writeDb(db) {
     memoryDb = db;
     return;
   }
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  const tmpFile = `${DB_FILE}.tmp`;
+  fs.writeFileSync(tmpFile, JSON.stringify(db, null, 2));
+  fs.renameSync(tmpFile, DB_FILE);
 }
 
 function publicUser(user) {
@@ -336,6 +369,7 @@ async function handleApi(req, res, url) {
       ok: true,
       dbOk,
       storage,
+      writable: !(process.env.VERCEL && (!MONGODB_URI || mongoDisabledReason)),
       mongoConfigured: Boolean(MONGODB_URI),
       mongoError: mongoDisabledReason || dbError,
     });
