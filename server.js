@@ -209,11 +209,8 @@ function isEphemeralServer() {
 }
 
 function assertWritableStorage() {
-  if (isEphemeralServer() && (!MONGODB_URI || mongoDisabledReason)) {
-    throw new PublicApiError(
-      503,
-      "MongoDB ulanmagan. Vercel Environment Variables ichiga MONGODB_URI qo'shing.",
-    );
+  if (isEphemeralServer() && (!MONGODB_URI || mongoDisabledReason) && !memoryDb) {
+    useMemoryDb("MongoDB ulanmagan. Vaqtinchalik memory storage ishlatyapti.");
   }
 }
 
