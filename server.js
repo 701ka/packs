@@ -32,6 +32,14 @@ let mongoClientPromise = null;
 let memoryDb = null;
 let mongoDisabledReason = "";
 
+class PublicApiError extends Error {
+  constructor(statusCode, message) {
+    super(message);
+    this.statusCode = statusCode;
+    this.publicMessage = message;
+  }
+}
+
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -202,8 +210,9 @@ function isEphemeralServer() {
 
 function assertWritableStorage() {
   if (isEphemeralServer() && (!MONGODB_URI || mongoDisabledReason)) {
-    throw new Error(
-      "Deployda data saqlanishi uchun MONGODB_URI kerak. Hozirgi storage vaqtinchalik, yozish bloklandi.",
+    throw new PublicApiError(
+      503,
+      "MongoDB ulanmagan. Vercel Environment Variables ichiga MONGODB_URI qo'shing.",
     );
   }
 }
@@ -340,11 +349,24 @@ function requireAdmin(req, res, db) {
 
 function withUploader(pack, db) {
   const uploader = db.users.find((u) => u.id === pack.uploaded_by);
+  const safeImg =
+    typeof pack.img === "string" && pack.img.trim().toLowerCase().startsWith("data:image/")
+      ? ""
+      : pack.img;
   return {
     ...pack,
+    img: safeImg,
     uploader_name: uploader?.name || pack.uploader_name || "",
     uploader_email: uploader?.email || pack.uploader_email || "",
   };
+}
+
+function normalizeImageUrl(value) {
+  const img = String(value || "").trim();
+  if (img.toLowerCase().startsWith("data:image/")) {
+    throw new PublicApiError(400, "Rasmni base64 qilib yubormang. Rasm uchun URL kiriting.");
+  }
+  return img;
 }
 
 async function handleApi(req, res, url) {
@@ -456,7 +478,7 @@ async function handleApi(req, res, url) {
       name: String(body.name || "").trim(),
       desc: String(body.desc || "").trim(),
       price: body.price || "Free",
-      img: body.img || "",
+      img: normalizeImageUrl(body.img),
       download_url: body.download_url || "",
       badge: body.badge || "",
       apps: Array.isArray(body.apps) ? body.apps : [],
@@ -485,7 +507,7 @@ async function handleApi(req, res, url) {
       name: body.name ?? pack.name,
       desc: body.desc ?? pack.desc,
       price: body.price ?? pack.price,
-      img: body.img ?? pack.img,
+      img: body.img === undefined ? pack.img : normalizeImageUrl(body.img),
       download_url: body.download_url ?? pack.download_url,
       badge: body.badge ?? pack.badge,
       apps: Array.isArray(body.apps) ? body.apps : pack.apps,
@@ -561,7 +583,9 @@ async function handleApi(req, res, url) {
     const body = await parseBody(req);
     const pack = db.packs.find((p) => p.id == parts[2]);
     if (!pack) return notFound(res);
-    Object.assign(pack, body, { apps: Array.isArray(body.apps) ? body.apps : pack.apps });
+    const updates = { ...body };
+    if (body.img !== undefined) updates.img = normalizeImageUrl(body.img);
+    Object.assign(pack, updates, { apps: Array.isArray(body.apps) ? body.apps : pack.apps });
     await writeDb(db);
     return send(res, 200, withUploader(pack, db));
   }
@@ -615,9 +639,12 @@ async function appHandler(req, res) {
     serveStatic(req, res, url);
   } catch (err) {
     console.error(err);
-    send(res, 500, {
-      error: "Server xatoligi",
-      detail: process.env.VERCEL ? err.message : undefined,
+    const statusCode = err.statusCode || 500;
+    send(res, statusCode, {
+      error:
+        err.publicMessage ||
+        (process.env.VERCEL ? err.message : "Server xatoligi"),
+      detail: process.env.VERCEL && !err.publicMessage ? err.message : undefined,
     });
   }
 }
