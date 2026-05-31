@@ -47,3 +47,48 @@ Start command kerak emas. Vercel `/api/*` so'rovlarni `api/index.js` orqali ishl
 ## Muhim
 
 Lokal ishlaganda `MONGODB_URI` bo'lmasa server `data/db.json`dan foydalanadi. Online deployda esa albatta `MONGODB_URI` qo'ying, shunda userlar va packlar MongoDB Atlasda saqlanadi.
+
+## Renderga Ko'chirish
+
+Render backendni oddiy Node server sifatida ishlatadi. Bu Vercel serverlessdan barqarorroq: server `npm start` bilan ishga tushadi va `/api` ham, HTML/CSS/JS ham bitta domen ostida ishlaydi.
+
+Renderda:
+
+```text
+New + -> Blueprint
+GitHub repo tanlang
+render.yaml topiladi
+Apply
+```
+
+Environment Variables ichiga shularni qo'ying:
+
+```text
+MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/editorpack?appName=Cluster0
+JWT_SECRET=uzoq-va-maxfiy-random-string
+ADMIN_EMAIL=karimovbdulloh@gmail.com
+ADMIN_PASSWORD=kuchli-parol
+```
+
+Deploy tugagach shu URL ochiladi:
+
+```text
+https://editorpack.onrender.com
+```
+
+Health tekshiruv:
+
+```text
+https://editorpack.onrender.com/api/health
+```
+
+To'g'ri ulangan bo'lsa javob ichida shular bo'ladi:
+
+```json
+{
+  "storage": "mongodb",
+  "mongoConfigured": true
+}
+```
+
+Muhim: Renderda ham doimiy saqlash uchun `MONGODB_URI` shart. Aks holda data server qayta ishga tushganda yoki deployda yo'qolishi mumkin.
