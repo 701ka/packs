@@ -126,6 +126,7 @@ function defaultPacks(adminId) {
       desc: "60 ta silliq transition preset. CapCut va Premiere Pro uchun ideal.",
       price: "Free",
       apps: ["CapCut", "Premiere"],
+      tags: ["transition", "swipe", "fade"],
       badge: "free",
       status: "live",
       img: "https://images.unsplash.com/photo-1536240478700-b869ad10e128?w=800&q=80",
@@ -139,6 +140,7 @@ function defaultPacks(adminId) {
       desc: "25 ta professional rang gradatsiyasi. DaVinci, Premiere va Final Cut uchun.",
       price: "$12",
       apps: ["DaVinci", "Premiere", "Final Cut"],
+      tags: ["lut", "grade", "cinematic", "color"],
       badge: "hot",
       status: "live",
       img: "https://images.unsplash.com/photo-1518929458119-e5bf444c30f4?w=800&q=80",
@@ -152,6 +154,7 @@ function defaultPacks(adminId) {
       desc: "20 ta motion blur overlay. After Effects va Premiere Pro uchun.",
       price: "$7",
       apps: ["After Effects", "Premiere"],
+      tags: ["motion", "blur", "whip", "shake"],
       badge: "new",
       status: "live",
       img: "https://images.unsplash.com/photo-1551817958-d9d86fb29431?w=800&q=80",
@@ -165,6 +168,7 @@ function defaultPacks(adminId) {
       desc: "50 ta trending effect va sticker. TikTok va Reels uchun.",
       price: "Free",
       apps: ["CapCut"],
+      tags: ["capcut", "trending", "flash", "beat"],
       badge: "hot",
       status: "live",
       img: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&q=80",
@@ -184,7 +188,7 @@ function createDefaultDb() {
     role: "admin",
     created_at: new Date().toISOString(),
   };
-  return { users: [admin], packs: defaultPacks(admin.id), subscribers: [] };
+  return { users: [admin], packs: defaultPacks(admin.id), subscribers: [], scans: [] };
 }
 
 async function getMongoStateCollection() {
@@ -249,6 +253,7 @@ async function readDb() {
         users: doc?.users || [],
         packs: doc?.packs || [],
         subscribers: doc?.subscribers || [],
+        scans: doc?.scans || [],
       };
     } catch (err) {
       useMemoryDb(err.message);
@@ -265,7 +270,7 @@ async function writeDb(db) {
       const state = await getMongoStateCollection();
       await state.updateOne(
         { _id: "main" },
-        { $set: { users: db.users, packs: db.packs, subscribers: db.subscribers || [] } },
+        { $set: { users: db.users, packs: db.packs, subscribers: db.subscribers || [], scans: db.scans || [] } },
         { upsert: true },
       );
       return;
@@ -479,6 +484,7 @@ async function handleApi(req, res, url) {
       download_url: body.download_url || "",
       badge: body.badge || "",
       apps: Array.isArray(body.apps) ? body.apps : [],
+      tags: Array.isArray(body.tags) ? body.tags : [],
       status: user.role === "admin" ? body.status || "live" : "pending",
       uploaded_by: user.id,
       created_at: new Date().toISOString(),
@@ -508,6 +514,7 @@ async function handleApi(req, res, url) {
       download_url: body.download_url ?? pack.download_url,
       badge: body.badge ?? pack.badge,
       apps: Array.isArray(body.apps) ? body.apps : pack.apps,
+      tags: Array.isArray(body.tags) ? body.tags : pack.tags || [],
       status: user.role === "admin" ? body.status || pack.status : "pending",
     });
     await writeDb(db);
@@ -553,6 +560,7 @@ async function handleApi(req, res, url) {
     if (user.email === ADMIN_EMAIL) return send(res, 400, { error: "Asosiy admin himoyalangan" });
     db.users = db.users.filter((u) => u.id != parts[2]);
     db.packs = db.packs.filter((p) => p.uploaded_by != parts[2]);
+    db.scans = (db.scans || []).filter((scan) => scan.user_id != parts[2]);
     await writeDb(db);
     return send(res, 200, { ok: true });
   }
@@ -582,7 +590,10 @@ async function handleApi(req, res, url) {
     if (!pack) return notFound(res);
     const updates = { ...body };
     if (body.img !== undefined) updates.img = normalizeImageUrl(body.img);
-    Object.assign(pack, updates, { apps: Array.isArray(body.apps) ? body.apps : pack.apps });
+    Object.assign(pack, updates, {
+      apps: Array.isArray(body.apps) ? body.apps : pack.apps,
+      tags: Array.isArray(body.tags) ? body.tags : pack.tags || [],
+    });
     await writeDb(db);
     return send(res, 200, withUploader(pack, db));
   }
@@ -643,6 +654,43 @@ async function appHandler(req, res) {
         (process.env.VERCEL ? err.message : "Server xatoligi"),
       detail: process.env.VERCEL && !err.publicMessage ? err.message : undefined,
     });
+  }
+
+  if (method === "GET" && parts.length === 1 && parts[0] === "scans") {
+    const user = requireUser(req, res, db);
+    if (!user) return;
+    const scans = (db.scans || [])
+      .filter((scan) => scan.user_id === user.id)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 12);
+    return send(res, 200, scans);
+  }
+
+  if (method === "POST" && parts.length === 1 && parts[0] === "scans") {
+    const user = requireUser(req, res, db);
+    if (!user) return;
+    const body = await parseBody(req);
+    const result = body.result && typeof body.result === "object" ? body.result : {};
+    const scan = {
+      id: Date.now(),
+      user_id: user.id,
+      file_name: String(body.file_name || "Video").slice(0, 120),
+      duration: Number(body.duration) || 0,
+      result: {
+        intensity: Number(result.intensity) || 0,
+        label: String(result.label || "Low"),
+        metrics: result.metrics || {},
+        effects: Array.isArray(result.effects) ? result.effects.slice(0, 10) : [],
+        events: Array.isArray(result.events) ? result.events.slice(0, 8) : [],
+        recommendations: Array.isArray(result.recommendations) ? result.recommendations.slice(0, 5) : [],
+      },
+      created_at: new Date().toISOString(),
+    };
+    db.scans = db.scans || [];
+    db.scans.push(scan);
+    db.scans = db.scans.slice(-250);
+    await writeDb(db);
+    return send(res, 201, scan);
   }
 }
 

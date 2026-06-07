@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -16,7 +16,7 @@
     <nav class="nav">
       <a href="/" class="nav-logo">EditorPack</a>
       <div class="nav-links">
-        <a href="javascript:history.back()" class="nav-link">← Orqaga</a>
+        <a href="javascript:history.back()" class="nav-link">&larr; Orqaga</a>
         <div class="nav-user" id="navUser"></div>
       </div>
     </nav>
@@ -31,9 +31,9 @@
     <!-- PAYMENT MODAL -->
     <div class="payment-overlay" id="paymentOverlay">
       <div class="payment-modal">
-        <button class="payment-close" onclick="closePayment()">✕</button>
+        <button class="payment-close" onclick="closePayment()">x</button>
         <div class="payment-header">
-          <div class="payment-icon">💳</div>
+          <div class="payment-icon">CARD</div>
           <div class="payment-title">To'lov</div>
           <div class="payment-subtitle" id="paymentPackName">Pack nomi</div>
         </div>
@@ -48,28 +48,28 @@
               class="pay-method-btn"
               onclick="selectPayMethod(this, 'click')"
             >
-              <span class="pay-method-icon">🃏</span>
+              <span class="pay-method-icon">C</span>
               <span>Click</span>
             </button>
             <button
               class="pay-method-btn"
               onclick="selectPayMethod(this, 'payme')"
             >
-              <span class="pay-method-icon">💳</span>
+              <span class="pay-method-icon">P</span>
               <span>Payme</span>
             </button>
             <button
               class="pay-method-btn"
               onclick="selectPayMethod(this, 'uzum')"
             >
-              <span class="pay-method-icon">🍇</span>
+              <span class="pay-method-icon">U</span>
               <span>Uzum</span>
             </button>
             <button
               class="pay-method-btn"
               onclick="selectPayMethod(this, 'card')"
             >
-              <span class="pay-method-icon">💰</span>
+              <span class="pay-method-icon">$</span>
               <span>Karta</span>
             </button>
           </div>
@@ -112,9 +112,7 @@
         >
           To'lovni amalga oshirish
         </button>
-        <div class="payment-secure">
-          🔒 Barcha to'lovlar xavfsiz SSL orqali amalga oshiriladi
-        </div>
+        <div class="payment-secure">Barcha to'lovlar xavfsiz SSL orqali amalga oshiriladi</div>
       </div>
     </div>
     <script src="../js/config.js"></script>
@@ -123,3 +121,4 @@
     <script src="../js/detail.js"></script>
   </body>
 </html>
+

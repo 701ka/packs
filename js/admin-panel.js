@@ -44,6 +44,20 @@ function formatDate(dt) {
   });
 }
 
+function parseList(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return String(value)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+}
+
 // ===== TABS =====
 function switchTab(tab) {
   document.getElementById("tab-users").style.display =
@@ -376,6 +390,7 @@ function openPackEdit(id) {
   document.getElementById("editImg").value = p.img || "";
   document.getElementById("editDownload").value = p.download_url || "";
   document.getElementById("editBadge").value = p.badge || "";
+  document.getElementById("editTags").value = parseList(p.tags).join(", ");
   document.getElementById("editStatus").value = p.status;
   document.getElementById("editModal").style.display = "flex";
 }
@@ -387,6 +402,7 @@ function closeModal(e) {
 
 async function savePack() {
   const id = document.getElementById("editId").value;
+  const current = allPacks.find((p) => String(p.id) === String(id));
   const body = {
     name: document.getElementById("editName").value,
     desc: document.getElementById("editDesc").value,
@@ -394,8 +410,9 @@ async function savePack() {
     img: document.getElementById("editImg").value,
     download_url: document.getElementById("editDownload").value,
     badge: document.getElementById("editBadge").value,
+    tags: parseList(document.getElementById("editTags").value).map((tag) => tag.toLowerCase()),
     status: document.getElementById("editStatus").value,
-    apps: [],
+    apps: current?.apps || [],
   };
   try {
     const res = await fetch(`${API}/admin/packs/${id}`, {

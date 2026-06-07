@@ -19,6 +19,15 @@ const ctx = scanCanvas.getContext("2d", { willReadFrequently: true });
 let selectedFile = null;
 let objectUrl = null;
 let allPacks = [];
+let scanHistory = [];
+
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+function getUser() {
+  return JSON.parse(localStorage.getItem("user") || "null");
+}
 
 function setProgress(pct, label) {
   const value = Math.max(0, Math.min(100, Math.round(pct)));
@@ -38,6 +47,30 @@ function formatTime(seconds) {
 function formatSize(bytes) {
   if (!bytes) return "0 MB";
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function formatDateTime(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleString("uz-UZ", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function parseList(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return String(value)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
 }
 
 function waitForEvent(target, eventName) {
@@ -648,25 +681,27 @@ function classifyVideo(frames, audio) {
 }
 
 function scorePack(pack, effects) {
-  const apps = Array.isArray(pack.apps) ? pack.apps : [];
-  const text = `${pack.name || ""} ${pack.desc || ""} ${apps.join(" ")} ${pack.badge || ""}`.toLowerCase();
+  const apps = parseList(pack.apps);
+  const tags = parseList(pack.tags).map((tag) => tag.toLowerCase());
+  const text = `${pack.name || ""} ${pack.desc || ""} ${apps.join(" ")} ${tags.join(" ")} ${pack.badge || ""}`.toLowerCase();
   const rules = [
-    ["transition", ["transition", "whip", "cut", "slide"]],
-    ["motion", ["motion", "blur", "shake", "whip"]],
-    ["lut", ["lut", "grade", "cinematic", "color"]],
-    ["capcut", ["capcut", "tiktok", "reels"]],
-    ["sfx", ["sfx", "whoosh", "hit", "audio", "beat"]],
-    ["flash", ["flash", "light", "glow"]],
-    ["zoom", ["zoom", "punch"]],
-    ["glitch", ["glitch", "rgb", "flicker"]],
+    { packKeys: ["transition", "transitions", "preset"], effectKeys: ["transition", "whip", "cut", "slide", "swipe", "fade"] },
+    { packKeys: ["motion", "blur", "shake"], effectKeys: ["motion", "blur", "shake", "whip", "speed"] },
+    { packKeys: ["lut", "grade", "cinematic", "color"], effectKeys: ["lut", "grade", "cinematic", "color", "warm", "cool", "desaturated"] },
+    { packKeys: ["capcut", "tiktok", "reels", "trending"], effectKeys: ["capcut", "tiktok", "reels", "beat", "flash", "glitch"] },
+    { packKeys: ["sfx", "whoosh", "hit", "audio", "beat", "riser"], effectKeys: ["sfx", "whoosh", "hit", "audio", "beat", "riser", "drop"] },
+    { packKeys: ["flash", "light", "glow"], effectKeys: ["flash", "light", "glow", "white", "black"] },
+    { packKeys: ["zoom", "punch"], effectKeys: ["zoom", "punch"] },
+    { packKeys: ["glitch", "rgb", "flicker", "strobe"], effectKeys: ["glitch", "rgb", "flicker", "strobe"] },
   ];
 
   return effects.reduce((score, effect) => {
     const lower = (effect.name || effect).toLowerCase();
-    const matched = rules.some(([packKey, effectKeys]) => {
-      return text.includes(packKey) && effectKeys.some((key) => lower.includes(key));
+    const matchedRule = rules.find((rule) => {
+      return rule.packKeys.some((key) => text.includes(key)) && rule.effectKeys.some((key) => lower.includes(key));
     });
-    return score + (matched ? 3 : 0) + (text.includes(lower.split(" ")[0]) ? 1 : 0);
+    const tagMatch = tags.some((tag) => lower.includes(tag) || matchedRule?.effectKeys.includes(tag));
+    return score + (matchedRule ? 3 : 0) + (tagMatch ? 4 : 0) + (text.includes(lower.split(" ")[0]) ? 1 : 0);
   }, 0);
 }
 
@@ -710,11 +745,11 @@ function renderResults(result) {
     ? topEvents
         .map(
           (event) => `
-            <div class="timeline-item">
+            <button class="timeline-item timeline-button" type="button" data-time="${event.time}">
               <div class="timeline-time">${formatTime(event.time)} - ${event.confidence}%</div>
               <div class="timeline-label">${event.label}</div>
               <div class="timeline-note">${event.note}</div>
-            </div>
+            </button>
           `,
         )
         .join("")
@@ -727,12 +762,49 @@ function renderResults(result) {
     .map((pack) => ({ pack, score: scorePack(pack, result.effects) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
+  result.recommendations = recommended.map(({ pack, score }) => ({
+    id: pack.id,
+    name: pack.name,
+    price: pack.price || "Free",
+    score,
+  }));
+
+  const metrics = result.metrics || {};
+  document.getElementById("metricGrid").innerHTML = [
+    ["Scene changes", metrics.sceneChanges ?? 0],
+    ["Audio hits", metrics.audioHits ?? 0],
+    ["Audio drops", metrics.audioDrops ?? 0],
+    ["Motion", metrics.avgMotion ?? 0],
+    ["Contrast", metrics.avgContrast ?? 0],
+    ["Saturation", (metrics.avgSaturation ?? 0) + "%"],
+  ]
+    .map(
+      ([label, value]) => `
+        <div class="metric-card">
+          <div class="metric-value">${value}</div>
+          <div class="metric-label">${label}</div>
+        </div>
+      `,
+    )
+    .join("");
+
+  document.getElementById("allEffects").innerHTML = result.effects
+    .slice(0, 8)
+    .map(
+      (effect) => `
+        <span class="effect-chip" title="${effect.reason || ""}">
+          <span>${effect.name}</span>
+          <b>${effect.confidence}%</b>
+        </span>
+      `,
+    )
+    .join("");
 
   document.getElementById("recommendList").innerHTML = recommended.length
     ? recommended
         .map(
           ({ pack, score }) => `
-            <a class="recommend-item" href="/pages/detail.html?id=${pack.id}">
+            <a class="recommend-item" href="/pages/detail.html?id=${pack.id}&from=scanner&effects=${encodeURIComponent(topNames)}">
               <div class="recommend-name">${pack.name}</div>
               <div class="recommend-meta">${score > 0 ? "Effektlarga mos keladi" : "Katalogdagi tavsiya"} - ${pack.price || "Free"}</div>
             </a>
@@ -747,6 +819,82 @@ function renderResults(result) {
   emptyState.hidden = true;
   resultContent.hidden = false;
 }
+
+function renderHistory() {
+  const block = document.getElementById("historyBlock");
+  const list = document.getElementById("historyList");
+  if (!block || !list) return;
+
+  if (!getUser() || !scanHistory.length) {
+    block.hidden = true;
+    return;
+  }
+
+  block.hidden = false;
+  list.innerHTML = scanHistory
+    .slice(0, 6)
+    .map(
+      (scan) => `
+        <button class="history-item" type="button" data-scan-id="${scan.id}">
+          <div class="history-name">${scan.file_name || "Video"}</div>
+          <div class="history-meta">${scan.result?.label || "Low"} intensity - ${formatDateTime(scan.created_at)}</div>
+        </button>
+      `,
+    )
+    .join("");
+}
+
+async function loadScanHistory() {
+  if (!getToken()) return;
+  try {
+    const res = await fetch(`${API}/scans`, {
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    if (!res.ok) throw new Error();
+    scanHistory = await res.json();
+    renderHistory();
+  } catch {
+    scanHistory = [];
+  }
+}
+
+async function saveScanHistory(result) {
+  if (!getToken() || !selectedFile) return;
+  try {
+    const res = await fetch(`${API}/scans`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + getToken(),
+      },
+      body: JSON.stringify({
+        file_name: selectedFile.name,
+        duration: scanVideo.duration || 0,
+        result,
+      }),
+    });
+    if (!res.ok) throw new Error();
+    const saved = await res.json();
+    scanHistory = [saved, ...scanHistory.filter((scan) => scan.id !== saved.id)].slice(0, 12);
+    renderHistory();
+  } catch {}
+}
+
+document.getElementById("timelineList")?.addEventListener("click", (event) => {
+  const item = event.target.closest("[data-time]");
+  if (!item || !scanVideo.src) return;
+  const time = Number(item.dataset.time);
+  if (!Number.isFinite(time)) return;
+  scanVideo.currentTime = Math.min(Math.max(time, 0), Math.max(scanVideo.duration - 0.05, 0));
+  scanVideo.play().catch(() => {});
+});
+
+document.getElementById("historyList")?.addEventListener("click", (event) => {
+  const item = event.target.closest("[data-scan-id]");
+  if (!item) return;
+  const scan = scanHistory.find((entry) => String(entry.id) === item.dataset.scanId);
+  if (scan?.result) renderResults(scan.result);
+});
 
 function resetScanner() {
   selectedFile = null;
@@ -802,6 +950,7 @@ async function runAnalysis() {
     setProgress(90, "Natija yig'ilmoqda...");
     const result = classifyVideo(frames, audio);
     renderResults(result);
+    await saveScanHistory(result);
     setProgress(100, "Tayyor");
     showToast("Scanner tahlilni tugatdi", "success");
   } catch (err) {
@@ -831,4 +980,5 @@ uploadZone.addEventListener("drop", (event) => {
 });
 
 loadPacks();
+loadScanHistory();
 renderNavUser();

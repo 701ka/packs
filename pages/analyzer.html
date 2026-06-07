@@ -76,6 +76,11 @@
               <div class="progress-fill" id="progressFill"></div>
             </div>
           </div>
+
+          <div class="history-block" id="historyBlock" hidden>
+            <div class="result-title">Scan history</div>
+            <div class="history-list" id="historyList"></div>
+          </div>
         </div>
 
         <div class="scanner-panel result-panel">
@@ -112,15 +117,15 @@
               <div class="timeline-list" id="timelineList"></div>
             </div>
 
-            <div class="result-block pro-lock">
+            <div class="result-block pro-analysis">
               <div>
                 <div class="result-title">Pro analysis</div>
                 <div class="pro-copy">
-                  Full metrics, all detected effects and detailed timeline will
-                  be available with subscription.
+                  Detailed metrics from video frames and audio.
                 </div>
               </div>
-              <button class="pro-btn" type="button">Coming soon</button>
+              <div class="metric-grid" id="metricGrid"></div>
+              <div class="all-effects" id="allEffects"></div>
             </div>
 
             <div class="result-block">

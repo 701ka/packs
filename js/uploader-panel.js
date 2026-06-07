@@ -198,6 +198,20 @@ function getPriceValue() {
   return "$" + raw;
 }
 
+function parseList(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return String(value)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+}
+
 function setPriceField(price) {
   const el = document.getElementById("packPrice");
   const prefix = document.getElementById("pricePrefix");
@@ -225,6 +239,20 @@ function getSelectedApps() {
   );
 }
 
+function getSelectedTags() {
+  return parseList(document.getElementById("packTags").value).map((tag) => tag.toLowerCase());
+}
+
+function getImageValue() {
+  const url = document.getElementById("packImgUrl").value.trim();
+  return url || "";
+}
+
+function handleImgUrlInput() {
+  uploadedImgBase64 = null;
+  updatePreview();
+}
+
 // ===== IMAGE UPLOAD =====
 function handleImgUpload(input) {
   const file = input.files[0];
@@ -246,6 +274,7 @@ function handleImgUpload(input) {
 
 function removeImg() {
   uploadedImgBase64 = null;
+  document.getElementById("packImgUrl").value = "";
   document.getElementById("imgFile").value = "";
   document.getElementById("imgUploadArea").style.display = "block";
   document.getElementById("imgPreviewWrap").style.display = "none";
@@ -264,6 +293,7 @@ function updatePreview() {
   const displayPrice = isFree ? "Free" : "$" + priceRaw;
   const badge = document.getElementById("packBadge").value;
   const apps = getSelectedApps();
+  const tags = getSelectedTags();
 
   document.getElementById("previewName").textContent = name;
   document.getElementById("previewDesc").textContent = desc;
@@ -286,20 +316,22 @@ function updatePreview() {
   }
 
   document.getElementById("previewTags").innerHTML = apps
+    .concat(tags.map((tag) => `#${tag}`))
     .map((a) => `<span class="preview-tag">${a}</span>`)
     .join("");
 
   const thumb = document.getElementById("previewThumb");
   const existingImg = thumb.querySelector("img.preview-main-img");
-  if (uploadedImgBase64) {
+  const imgSource = getImageValue() || uploadedImgBase64;
+  if (imgSource) {
     if (existingImg) {
-      existingImg.src = uploadedImgBase64;
+      existingImg.src = imgSource;
     } else {
       const img = document.createElement("img");
       img.className = "preview-main-img";
       img.style.cssText =
         "width:100%;height:100%;object-fit:cover;position:absolute;inset:0";
-      img.src = uploadedImgBase64;
+      img.src = imgSource;
       thumb.appendChild(img);
     }
     thumb.querySelector(".preview-thumb-placeholder").style.display = "none";
@@ -317,6 +349,8 @@ function resetForm() {
   document.getElementById("packName").value = "";
   document.getElementById("packDesc").value = "";
   document.getElementById("packBadge").value = "";
+  document.getElementById("packTags").value = "";
+  document.getElementById("packImgUrl").value = "";
   document.getElementById("packDownload").value = "";
   document.getElementById("imgFile").value = "";
   document.getElementById("imgUploadArea").style.display = "block";
@@ -341,11 +375,13 @@ function openEdit(id) {
   document.getElementById("packName").value = p.name;
   document.getElementById("packDesc").value = p.desc || "";
   document.getElementById("packBadge").value = p.badge || "";
+  document.getElementById("packTags").value = parseList(p.tags).join(", ");
+  document.getElementById("packImgUrl").value = p.img || "";
   document.getElementById("packDownload").value = p.download_url || "";
   setPriceField(p.price || "");
 
   if (p.img) {
-    uploadedImgBase64 = p.img;
+    uploadedImgBase64 = null;
     document.getElementById("imgUploadArea").style.display = "none";
     document.getElementById("imgPreviewWrap").style.display = "flex";
     document.getElementById("imgPreviewSmall").src = p.img;
@@ -379,10 +415,11 @@ async function submitPack() {
     name,
     desc,
     price: getPriceValue(),
-    img: uploadedImgBase64 || "",
+    img: getImageValue(),
     download_url,
     badge: document.getElementById("packBadge").value,
     apps: getSelectedApps(),
+    tags: getSelectedTags(),
     status: me.role === "admin" ? "live" : "pending",
     uploaded_by: me.id,
     uploader_name: me.name,

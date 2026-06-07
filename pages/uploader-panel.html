@@ -155,7 +155,24 @@
             </div>
 
             <div class="form-group">
+              <label class="form-label">Scanner taglari</label>
+              <input
+                id="packTags"
+                class="form-input"
+                placeholder="transition, flash, beat, lut, motion"
+                oninput="updatePreview()"
+              />
+            </div>
+
+            <div class="form-group">
               <label class="form-label">Pack rasmi *</label>
+              <input
+                id="packImgUrl"
+                class="form-input"
+                placeholder="https://example.com/cover.jpg"
+                oninput="handleImgUrlInput()"
+                style="margin-bottom: 10px"
+              />
               <div
                 class="img-upload-area"
                 id="imgUploadArea"

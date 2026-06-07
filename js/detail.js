@@ -1,4 +1,4 @@
-const API = window.API_BASE || "/api";
+﻿const API = window.API_BASE || "/api";
 
 function getUser() {
   return JSON.parse(localStorage.getItem("user") || "null");
@@ -38,10 +38,10 @@ function renderNavUser() {
           </div>
         </div>
         <div class="dropdown-divider"></div>
-        ${user.role === "admin" ? `<a href="/pages/admin-panel.html" class="dropdown-item">⚙️ Admin Panel</a>` : ""}
-        ${user.role === "uploader" || user.role === "admin" ? `<a href="/pages/uploader-panel.html" class="dropdown-item">📤 Uploader Panel</a>` : ""}
+        ${user.role === "admin" ? `<a href="/pages/admin-panel.html" class="dropdown-item">Admin Panel</a>` : ""}
+        ${user.role === "uploader" || user.role === "admin" ? `<a href="/pages/uploader-panel.html" class="dropdown-item">Uploader Panel</a>` : ""}
         <div class="dropdown-divider"></div>
-        <a href="#" class="dropdown-item danger" onclick="logoutUser()">🚪 Logout</a>
+        <a href="#" class="dropdown-item danger" onclick="logoutUser()">Logout</a>
       </div>`;
   } else {
     navUser.innerHTML = `
@@ -92,7 +92,7 @@ async function loadDetail() {
     if (!res.ok) throw new Error("Pack topilmadi");
     currentPack = await res.json();
 
-    // Download mode — to'g'ridan-to'g'ri download sahifasi
+    // Download mode: to'g'ridan-to'g'ri download sahifasi
     if (mode === "download") {
       renderDownloadPage(currentPack);
       return;
@@ -111,8 +111,16 @@ function renderDetailPage(p) {
   const rating = p.rating || 4.5;
   const reviews = p.reviews || 50;
   const apps = Array.isArray(p.apps) ? p.apps : JSON.parse(p.apps || "[]");
+  const params = new URLSearchParams(window.location.search);
+  const scannerEffects = params.get("from") === "scanner" ? params.get("effects") || "" : "";
+  const scannerBadge = scannerEffects
+    ? `<div class="scanner-match-box">
+        <div class="scanner-match-title">Scanner tavsiyasi</div>
+        <div class="scanner-match-text">Bu pack videongizdagi ${scannerEffects} effektlariga mos deb topildi.</div>
+      </div>`
+    : "";
 
-  document.title = p.name + " — EditorPack";
+  document.title = p.name + " - EditorPack";
 
   const badgeHtml = p.badge
     ? `<span class="detail-badge-tag badge-${p.badge}">${p.badge}</span>`
@@ -127,7 +135,7 @@ function renderDetailPage(p) {
           ${
             p.img
               ? `<img src="${p.img}" alt="${p.name}">`
-              : `<div class="detail-cover-placeholder">📦</div>`
+              : `<div class="detail-cover-placeholder">PACK</div>`
           }
         </div>
 
@@ -138,6 +146,7 @@ function renderDetailPage(p) {
         </div>
 
         <div class="detail-name">${p.name}</div>
+        ${scannerBadge}
 
         <div class="detail-rating">
           <span class="stars">${renderStars(rating)}</span>
@@ -160,36 +169,30 @@ function renderDetailPage(p) {
 
           ${
             isFree
-              ? `<button class="action-btn action-btn-primary" onclick="handleFreeDownload()">
-                ⬇️ Yuklab olish
-               </button>`
-              : `<button class="action-btn action-btn-primary" onclick="handleBuyPack()">
-                💳 Sotib olish
-               </button>
-               <button class="action-btn action-btn-outline" onclick="handleFreePreview()">
-                👁️ Bepul ko'rish
-               </button>`
+              ? `<button class="action-btn action-btn-primary" onclick="handleFreeDownload()">Yuklab olish</button>`
+              : `<button class="action-btn action-btn-primary" onclick="handleBuyPack()">Sotib olish</button>
+               <button class="action-btn action-btn-outline" onclick="handleFreePreview()">Bepul ko'rish</button>`
           }
 
           <div class="action-divider"></div>
 
           <div class="action-features">
             <div class="action-feature">
-              <span class="action-feature-icon">✅</span>
+              <span class="action-feature-icon">OK</span>
               <span>Bir marta sotib ol, umr bo'yi ishla</span>
             </div>
             <div class="action-feature">
-              <span class="action-feature-icon">🔄</span>
+              <span class="action-feature-icon">UP</span>
               <span>Yangilanishlar bepul</span>
             </div>
             <div class="action-feature">
-              <span class="action-feature-icon">💬</span>
+              <span class="action-feature-icon">SUP</span>
               <span>Qo'llab-quvvatlash mavjud</span>
             </div>
             ${
               apps.length
                 ? `<div class="action-feature">
-              <span class="action-feature-icon">🎬</span>
+              <span class="action-feature-icon">APP</span>
               <span>${apps.join(", ")} uchun mos</span>
             </div>`
                 : ""
@@ -207,10 +210,10 @@ function renderDetailPage(p) {
 
 // ===== DOWNLOAD PAGE =====
 function renderDownloadPage(p) {
-  document.title = "Yuklab olish — " + p.name;
+  document.title = "Yuklab olish - " + p.name;
   document.getElementById("detailPage").innerHTML = `
     <div class="download-page">
-      <div class="download-icon">🎉</div>
+      <div class="download-icon">OK</div>
       <div class="download-title">Tayyor! Yuklab oling</div>
       <div class="download-sub">
         Pack muvaffaqiyatli ochildi. Quyidagi tugma orqali yuklab oling.
@@ -218,11 +221,9 @@ function renderDownloadPage(p) {
       <div class="download-card">
         <div class="download-pack-name">${p.name}</div>
         <div class="download-pack-desc">${p.desc || ""}</div>
-        <a class="download-btn-big" href="${p.download_url || "#"}" target="_blank" rel="noopener">
-          ⬇️ Yuklab olish
-        </a>
+        <a class="download-btn-big" href="${p.download_url || "#"}" target="_blank" rel="noopener">Yuklab olish</a>
       </div>
-      <button class="download-back" onclick="history.back()">← Orqaga qaytish</button>
+      <button class="download-back" onclick="history.back()">&larr; Orqaga qaytish</button>
     </div>
   `;
 }
@@ -248,7 +249,7 @@ async function loadSimilar(currentId) {
               ${
                 s.img
                   ? `<img class="similar-img" src="${s.img}" alt="${s.name}">`
-                  : `<div class="similar-img-placeholder">📦</div>`
+                  : `<div class="similar-img-placeholder">PACK</div>`
               }
               <div class="similar-info">
                 <div class="similar-name">${s.name}</div>
@@ -279,7 +280,7 @@ function handleFreeDownload() {
 // ===== FREE PREVIEW (pullik pack uchun) =====
 function handleFreePreview() {
   showInfo({
-    title: "👁️ Bepul ko'rish",
+    title: "Bepul ko'rish",
     message:
       "Trial versiyasi hozircha mavjud emas. To'liq versiyani sotib oling.",
     btnText: "OK",
@@ -327,10 +328,10 @@ function selectPayMethod(btn, method) {
     cardForm.style.display = "none";
     const msgs = {
       click:
-        "☝️ Click ilovasi orqali to'lov amalga oshiriladi. Davom etish uchun tugmani bosing.",
+        "Click ilovasi orqali to'lov amalga oshiriladi. Davom etish uchun tugmani bosing.",
       payme:
-        "💳 Payme ilovasi orqali to'lov amalga oshiriladi. Davom etish uchun tugmani bosing.",
-      uzum: "🍇 Uzum Bank ilovasi orqali to'lov amalga oshiriladi. Davom etish uchun tugmani bosing.",
+        "Payme ilovasi orqali to'lov amalga oshiriladi. Davom etish uchun tugmani bosing.",
+      uzum: "Uzum Bank ilovasi orqali to'lov amalga oshiriladi. Davom etish uchun tugmani bosing.",
     };
     note.textContent = msgs[method] || "";
     note.style.display = "block";
@@ -355,7 +356,7 @@ function processPayment() {
   // Demo: to'lov muvaffaqiyatli bo'lgandek ko'rsatish
   setTimeout(() => {
     showInfo({
-      title: "🎉 To'lov muvaffaqiyatli!",
+      title: "To'lov muvaffaqiyatli!",
       message: "To'lovingiz qabul qilindi. Pack yuklab olinmoqda...",
       btnText: "Yuklab olish",
     });
@@ -365,3 +366,4 @@ function processPayment() {
 // ===== INIT =====
 renderNavUser();
 loadDetail();
+

@@ -117,6 +117,12 @@
   margin-top: 16px;
 }
 
+.history-block {
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+}
+
 .progress-top {
   display: flex;
   justify-content: space-between;
@@ -273,6 +279,47 @@
   margin-top: 3px;
 }
 
+.all-effects,
+.history-list {
+  display: grid;
+  gap: 8px;
+}
+
+.history-item {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: inherit;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-item:hover,
+.history-item:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.history-name {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.history-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.pro-analysis {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(14, 165, 233, 0.07));
+  border: 1px solid rgba(192, 132, 252, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+}
+
 .timeline-list,
 .recommend-list {
   display: grid;
@@ -285,6 +332,26 @@
   background: var(--surface2);
   border-radius: 8px;
   padding: 10px;
+}
+
+.timeline-button {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.timeline-button:hover,
+.timeline-button:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface3);
+  outline: none;
+}
+
+.timeline-button:active {
+  transform: translateY(1px);
 }
 
 .timeline-time {
