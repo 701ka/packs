@@ -694,3 +694,118 @@
     font-size: 14px;
   }
 }
+
+@media (max-width: 640px) {
+  .nav {
+    align-items: center;
+    position: sticky;
+  }
+
+  .nav-menu-btn {
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface2);
+    color: var(--text);
+    display: grid;
+    place-items: center;
+    gap: 4px;
+    padding: 10px;
+    margin-left: auto;
+    cursor: pointer;
+  }
+
+  .nav-menu-btn span {
+    width: 18px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+    transition: transform 0.18s, opacity 0.18s;
+  }
+
+  .nav.menu-open .nav-menu-btn span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+
+  .nav.menu-open .nav-menu-btn span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .nav.menu-open .nav-menu-btn span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  .nav-links {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    display: none;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    justify-content: stretch;
+    gap: 8px;
+    max-height: calc(100vh - 86px);
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+  }
+
+  .nav.menu-open .nav-links {
+    display: grid;
+  }
+
+  .nav-link,
+  .nav-admin-btn,
+  .nav-btn,
+  .nav-btn-outline {
+    width: 100%;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .nav-user {
+    width: 100%;
+    display: grid;
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  .nav-user:empty {
+    display: none;
+  }
+
+  .nav-links > .pref-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(80px, 0.35fr) minmax(0, 1fr);
+  }
+
+  .nav-links > .pref-controls .pref-select,
+  .nav-links > .pref-controls .pref-toggle {
+    width: 100%;
+  }
+
+  .nav-dropdown {
+    position: static;
+    width: auto;
+    min-width: 0;
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 420px) {
+  .nav {
+    display: flex;
+    grid-template-columns: none;
+  }
+}

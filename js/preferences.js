@@ -380,6 +380,43 @@
     setTheme(getTheme());
   }
 
+  function initMobileNav() {
+    const nav = document.querySelector(".nav");
+    const links = document.querySelector(".nav-links");
+    if (!nav || !links || nav.querySelector(".nav-menu-btn")) return;
+
+    const button = document.createElement("button");
+    button.className = "nav-menu-btn";
+    button.type = "button";
+    button.setAttribute("aria-label", "Menu");
+    button.setAttribute("aria-expanded", "false");
+    button.innerHTML = "<span></span><span></span><span></span>";
+    nav.insertBefore(button, links);
+
+    const closeMenu = () => {
+      nav.classList.remove("menu-open");
+      button.setAttribute("aria-expanded", "false");
+    };
+
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const isOpen = nav.classList.toggle("menu-open");
+      button.setAttribute("aria-expanded", String(isOpen));
+    });
+
+    links.addEventListener("click", (event) => {
+      if (event.target.closest("a")) closeMenu();
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!nav.contains(event.target)) closeMenu();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeMenu();
+    });
+  }
+
   function startObserver() {
     const observer = new MutationObserver((mutations) => {
       let shouldTranslate = false;
@@ -405,6 +442,7 @@
 
   function init() {
     addControls();
+    initMobileNav();
     translatePage();
     startObserver();
   }

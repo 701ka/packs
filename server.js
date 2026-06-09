@@ -455,6 +455,43 @@ async function handleApi(req, res, url) {
     return send(res, 200, withUploader(pack, db));
   }
 
+  if (method === "GET" && parts.length === 1 && parts[0] === "scans") {
+    const user = requireUser(req, res, db);
+    if (!user) return;
+    const scans = (db.scans || [])
+      .filter((scan) => scan.user_id === user.id)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 12);
+    return send(res, 200, scans);
+  }
+
+  if (method === "POST" && parts.length === 1 && parts[0] === "scans") {
+    const user = requireUser(req, res, db);
+    if (!user) return;
+    const body = await parseBody(req);
+    const result = body.result && typeof body.result === "object" ? body.result : {};
+    const scan = {
+      id: Date.now(),
+      user_id: user.id,
+      file_name: String(body.file_name || "Video").slice(0, 120),
+      duration: Number(body.duration) || 0,
+      result: {
+        intensity: Number(result.intensity) || 0,
+        label: String(result.label || "Low"),
+        metrics: result.metrics || {},
+        effects: Array.isArray(result.effects) ? result.effects.slice(0, 10) : [],
+        events: Array.isArray(result.events) ? result.events.slice(0, 8) : [],
+        recommendations: Array.isArray(result.recommendations) ? result.recommendations.slice(0, 5) : [],
+      },
+      created_at: new Date().toISOString(),
+    };
+    db.scans = db.scans || [];
+    db.scans.push(scan);
+    db.scans = db.scans.slice(-250);
+    await writeDb(db);
+    return send(res, 201, scan);
+  }
+
   if (method === "GET" && parts.join("/") === "uploader/packs") {
     const user = requireUser(req, res, db);
     if (!user) return;
@@ -656,42 +693,6 @@ async function appHandler(req, res) {
     });
   }
 
-  if (method === "GET" && parts.length === 1 && parts[0] === "scans") {
-    const user = requireUser(req, res, db);
-    if (!user) return;
-    const scans = (db.scans || [])
-      .filter((scan) => scan.user_id === user.id)
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 12);
-    return send(res, 200, scans);
-  }
-
-  if (method === "POST" && parts.length === 1 && parts[0] === "scans") {
-    const user = requireUser(req, res, db);
-    if (!user) return;
-    const body = await parseBody(req);
-    const result = body.result && typeof body.result === "object" ? body.result : {};
-    const scan = {
-      id: Date.now(),
-      user_id: user.id,
-      file_name: String(body.file_name || "Video").slice(0, 120),
-      duration: Number(body.duration) || 0,
-      result: {
-        intensity: Number(result.intensity) || 0,
-        label: String(result.label || "Low"),
-        metrics: result.metrics || {},
-        effects: Array.isArray(result.effects) ? result.effects.slice(0, 10) : [],
-        events: Array.isArray(result.events) ? result.events.slice(0, 8) : [],
-        recommendations: Array.isArray(result.recommendations) ? result.recommendations.slice(0, 5) : [],
-      },
-      created_at: new Date().toISOString(),
-    };
-    db.scans = db.scans || [];
-    db.scans.push(scan);
-    db.scans = db.scans.slice(-250);
-    await writeDb(db);
-    return send(res, 201, scan);
-  }
 }
 
 const server = http.createServer(appHandler);
