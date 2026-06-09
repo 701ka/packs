@@ -415,3 +415,282 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 640px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .nav {
+    height: auto;
+    min-height: 58px;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .nav-logo {
+    flex: 0 0 auto;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 17px;
+  }
+
+  .nav-links {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-link,
+  .nav-admin-btn,
+  .nav-btn,
+  .nav-btn-outline {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .nav-user {
+    flex: 0 0 auto;
+  }
+
+  .avatar-circle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .nav-dropdown {
+    position: fixed;
+    top: 58px;
+    left: 12px;
+    right: 12px;
+    min-width: 0;
+    width: auto;
+  }
+
+  .scanner-page {
+    padding: 0 12px 34px;
+  }
+
+  .scanner-hero {
+    padding: 28px 0 18px;
+    text-align: left;
+  }
+
+  .hero-badge {
+    margin-bottom: 12px;
+  }
+
+  .scanner-hero h1 {
+    font-size: 34px;
+    line-height: 1.05;
+    margin-bottom: 10px;
+  }
+
+  .scanner-hero p {
+    font-size: 14px;
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .scanner-layout {
+    gap: 12px;
+  }
+
+  .scanner-panel {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .upload-zone {
+    min-height: 210px;
+    padding: 22px 14px;
+    gap: 8px;
+  }
+
+  .upload-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 30px;
+  }
+
+  .upload-title {
+    font-size: 16px;
+  }
+
+  .upload-sub,
+  .file-meta,
+  .empty-text,
+  .score-label {
+    font-size: 12px;
+  }
+
+  .video-wrap video {
+    max-height: 58vh;
+    border-radius: 8px;
+  }
+
+  .scanner-actions {
+    position: sticky;
+    bottom: 8px;
+    z-index: 8;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(92px, 0.38fr);
+    gap: 8px;
+    padding: 8px;
+    margin: 12px -4px 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(17, 18, 20, 0.92);
+    backdrop-filter: blur(10px);
+  }
+
+  :root[data-theme="light"] .scanner-actions {
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .scanner-actions .btn-primary,
+  .scanner-actions .btn-secondary {
+    width: 100%;
+    min-height: 46px;
+    padding: 12px 10px;
+    border-radius: 8px;
+  }
+
+  .history-block {
+    margin-top: 14px;
+  }
+
+  .result-panel {
+    min-height: 0;
+  }
+
+  .result-empty {
+    min-height: 260px;
+    padding: 18px 10px;
+  }
+
+  .empty-icon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .result-content {
+    gap: 14px;
+  }
+
+  .score-row {
+    gap: 12px;
+    padding-bottom: 12px;
+  }
+
+  .score-title {
+    font-size: 24px;
+  }
+
+  .score-ring {
+    width: 60px;
+    height: 60px;
+    border-width: 5px;
+    flex: 0 0 auto;
+  }
+
+  .summary-box,
+  .timeline-item,
+  .recommend-item,
+  .history-item,
+  .metric-card,
+  .pro-analysis {
+    padding: 11px;
+  }
+
+  .chip-list,
+  .all-effects {
+    gap: 7px;
+  }
+
+  .effect-chip {
+    max-width: 100%;
+    min-height: 34px;
+    border-radius: 8px;
+    white-space: normal;
+  }
+
+  .timeline-button,
+  .history-item,
+  .recommend-item {
+    min-height: 58px;
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-value {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 420px) {
+  .nav {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 9px 10px;
+  }
+
+  .nav-links {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .scanner-page {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .scanner-hero {
+    padding-top: 22px;
+  }
+
+  .scanner-hero h1 {
+    font-size: 30px;
+  }
+
+  .hero-badge {
+    font-size: 11px;
+  }
+
+  .upload-zone {
+    min-height: 190px;
+  }
+
+  .scanner-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .score-row {
+    align-items: flex-start;
+  }
+
+  .score-ring {
+    width: 54px;
+    height: 54px;
+    font-size: 14px;
+  }
+}

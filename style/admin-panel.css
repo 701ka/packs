@@ -559,3 +559,117 @@ tbody td {
     font-size: 11px;
   }
 }
+
+@media (max-width: 640px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .admin-wrap {
+    margin: 24px auto;
+    padding: 0 12px 40px;
+  }
+
+  .admin-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .admin-title {
+    font-size: 22px;
+  }
+
+  .tabs {
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-btn {
+    min-height: 42px;
+    padding: 10px 14px;
+    white-space: nowrap;
+  }
+
+  .stats-row {
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .users-table-wrap {
+    overflow-x: auto;
+    border-radius: 10px;
+  }
+
+  .table-header {
+    align-items: stretch;
+    padding: 14px;
+  }
+
+  .table-header > div[style] {
+    align-items: stretch !important;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .search-users {
+    width: 100% !important;
+    min-height: 40px;
+  }
+
+  table {
+    min-width: 760px;
+  }
+
+  .approve-btn,
+  .reject-btn,
+  .edit-btn,
+  .delete-btn,
+  .btn-save,
+  .btn-cancel {
+    min-height: 38px;
+  }
+
+  .modal-overlay {
+    align-items: flex-start;
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-radius: 12px;
+    padding: 18px;
+  }
+
+  .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .toast {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    transform: translateY(12px);
+    white-space: normal;
+    text-align: center;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+  }
+}

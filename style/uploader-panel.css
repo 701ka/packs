@@ -808,6 +808,134 @@ textarea.form-input {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 640px) {
+  body {
+    display: block;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    width: 100%;
+    min-height: 0;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .sidebar-logo {
+    margin: 0;
+    padding: 0 4px;
+    font-size: 18px;
+  }
+
+  .sidebar-user {
+    margin: 0;
+    padding: 9px;
+  }
+
+  .sidebar-nav {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .sidebar-item {
+    justify-content: center;
+    min-height: 42px;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .sidebar-back {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 6px;
+  }
+
+  .main-content {
+    height: auto;
+    min-height: calc(100vh - 190px);
+    margin-left: 0;
+    padding: 18px 12px 34px;
+    overflow: visible;
+  }
+
+  .page-header {
+    margin-bottom: 20px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+
+  .stats-row {
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  .table-top {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .add-btn,
+  .btn-save,
+  .btn-cancel {
+    min-height: 42px;
+  }
+
+  table {
+    min-width: 680px;
+  }
+
+  .upload-layout {
+    gap: 14px;
+  }
+
+  .upload-form-col,
+  .upload-preview-col,
+  .advice-box {
+    border-radius: 10px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .apps-pills {
+    gap: 8px;
+  }
+
+  .app-pill {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .form-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
 /* ===== PRICE INPUT ===== */
 .price-wrap {
   position: relative;
