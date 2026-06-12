@@ -567,6 +567,48 @@ function withUploader(pack, db) {
   };
 }
 
+function publicPack(pack, db) {
+  const { download_url, uploader_email, uploaded_by, ...safe } = withUploader(pack, db);
+  return {
+    ...safe,
+    has_download: Boolean(download_url),
+  };
+}
+
+function canDownloadPack(user, pack) {
+  if (!user || !pack) return false;
+  if (user.role === "admin") return true;
+  if (pack.uploaded_by === user.id) return true;
+  const isFree = !pack.price || pack.price === "Free" || pack.price === "$0";
+  return pack.status === "live" && isFree;
+}
+
+function sendFileDownload(res, pack) {
+  const downloadUrl = String(pack.download_url || "");
+  if (/^https?:\/\//i.test(downloadUrl)) {
+    res.writeHead(302, { Location: downloadUrl });
+    res.end();
+    return;
+  }
+  if (!downloadUrl.startsWith("/uploads/packs/")) {
+    throw new PublicApiError(404, "Pack fayli topilmadi");
+  }
+  const fileName = path.basename(downloadUrl);
+  const full = path.normalize(path.join(UPLOAD_DIR, fileName));
+  if (!full.startsWith(UPLOAD_DIR) || !fs.existsSync(full)) {
+    throw new PublicApiError(404, "Pack fayli topilmadi");
+  }
+  const displayName = String(pack.file_name || fileName).replace(/["\r\n]/g, "");
+  res.writeHead(200, {
+    "Content-Type": MIME[path.extname(full).toLowerCase()] || "application/octet-stream",
+    "Content-Length": fs.statSync(full).size,
+    "Content-Disposition": `attachment; filename="${displayName}"`,
+    "Cache-Control": "private, no-store",
+    "X-Content-Type-Options": "nosniff",
+  });
+  fs.createReadStream(full).pipe(res);
+}
+
 function normalizeImageUrl(value) {
   const img = String(value || "").trim();
   if (img.toLowerCase().startsWith("data:image/")) {
@@ -649,14 +691,25 @@ async function handleApi(req, res, url) {
     return send(
       res,
       200,
-      db.packs.filter((p) => p.status === "live").map((p) => withUploader(p, db)),
+      db.packs.filter((p) => p.status === "live").map((p) => publicPack(p, db)),
     );
+  }
+
+  if (method === "GET" && parts.length === 3 && parts[0] === "packs" && parts[2] === "download") {
+    const user = requireUser(req, res, db);
+    if (!user) return;
+    const pack = db.packs.find((p) => p.id == parts[1]);
+    if (!pack) return notFound(res);
+    if (!canDownloadPack(user, pack)) {
+      return send(res, 403, { error: "Bu packni yuklab olishga ruxsat yo'q" });
+    }
+    return sendFileDownload(res, pack);
   }
 
   if (method === "GET" && parts.length === 2 && parts[0] === "packs") {
     const pack = db.packs.find((p) => p.id == parts[1] && p.status === "live");
     if (!pack) return notFound(res);
-    return send(res, 200, withUploader(pack, db));
+    return send(res, 200, publicPack(pack, db));
   }
 
   if (method === "GET" && parts.length === 1 && parts[0] === "scans") {
@@ -722,7 +775,7 @@ async function handleApi(req, res, url) {
       desc: String(body.desc || "").trim(),
       price: body.price || "Free",
       img: normalizeImageUrl(body.img),
-      download_url: upload?.download_url || body.download_url || "",
+      download_url: upload?.download_url || "",
       file_name: upload?.file_name || "",
       file_size: upload?.file_size || 0,
       file_type: upload?.file_type || "",
@@ -734,7 +787,7 @@ async function handleApi(req, res, url) {
       created_at: new Date().toISOString(),
     };
     if (!pack.name || !pack.desc || !pack.download_url) {
-      return send(res, 400, { error: "Nomi, tavsif va download URL majburiy" });
+      return send(res, 400, { error: "Nomi, tavsif va pack fayli majburiy" });
     }
     db.packs.push(pack);
     await writeDb(db);
@@ -750,12 +803,15 @@ async function handleApi(req, res, url) {
       return send(res, 403, { error: "Ruxsat yo'q" });
     }
     const { body, upload } = await parsePackRequest(req);
+    const nextDownloadUrl =
+      upload?.download_url ||
+      (user.role === "admin" && body.download_url ? body.download_url : pack.download_url);
     Object.assign(pack, {
       name: body.name ?? pack.name,
       desc: body.desc ?? pack.desc,
       price: body.price ?? pack.price,
       img: body.img === undefined ? pack.img : normalizeImageUrl(body.img),
-      download_url: upload?.download_url || body.download_url || pack.download_url,
+      download_url: nextDownloadUrl,
       file_name: upload?.file_name || pack.file_name || "",
       file_size: upload?.file_size || pack.file_size || 0,
       file_type: upload?.file_type || pack.file_type || "",
@@ -867,6 +923,11 @@ async function handleApi(req, res, url) {
 function serveStatic(req, res, url) {
   let filePath = decodeURIComponent(url.pathname);
   if (filePath === "/") filePath = "/index.html";
+  if (filePath.startsWith("/uploads/")) {
+    res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("Not found");
+    return;
+  }
   const full = path.normalize(path.join(ROOT, filePath));
   if (!full.startsWith(ROOT)) {
     res.writeHead(403);

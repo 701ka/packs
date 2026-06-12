@@ -4,6 +4,10 @@ function getUser() {
   return JSON.parse(localStorage.getItem("user") || "null");
 }
 
+function getToken() {
+  return localStorage.getItem("token");
+}
+
 function renderStars(rating) {
   const full = Math.floor(rating);
   const half = rating % 1 >= 0.5 ? 1 : 0;
@@ -221,11 +225,42 @@ function renderDownloadPage(p) {
       <div class="download-card">
         <div class="download-pack-name">${p.name}</div>
         <div class="download-pack-desc">${p.desc || ""}</div>
-        <a class="download-btn-big" href="${p.download_url || "#"}" target="_blank" rel="noopener">Yuklab olish</a>
+        <button class="download-btn-big" onclick="downloadCurrentPack()">Yuklab olish</button>
       </div>
       <button class="download-back" onclick="history.back()">&larr; Orqaga qaytish</button>
     </div>
   `;
+}
+
+async function downloadCurrentPack() {
+  if (!currentPack) return;
+  try {
+    const res = await fetch(`${API}/packs/${currentPack.id}/download`, {
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    if (!res.ok) throw new Error((await res.json()).error || "Yuklab bo'lmadi");
+
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const fileName =
+      disposition.match(/filename="([^"]+)"/)?.[1] ||
+      currentPack.file_name ||
+      `${currentPack.name || "pack"}.zip`;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    showInfo({
+      title: "Yuklab bo'lmadi",
+      message: err.message,
+      btnText: "OK",
+    });
+  }
 }
 
 // ===== SIMILAR PACKS =====
@@ -265,10 +300,10 @@ async function loadSimilar(currentId) {
 // ===== FREE DOWNLOAD =====
 function handleFreeDownload() {
   if (!currentPack) return;
-  if (!currentPack.download_url) {
+  if (!currentPack.has_download) {
     showInfo({
-      title: "Download URL yo'q",
-      message: "Bu pack uchun hali download linki qo'shilmagan.",
+      title: "Fayl yo'q",
+      message: "Bu pack uchun hali fayl yuklanmagan.",
       btnText: "OK",
     });
     return;
