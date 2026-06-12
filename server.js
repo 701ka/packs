@@ -149,66 +149,8 @@ function verifyToken(token) {
   }
 }
 
-function defaultPacks(adminId) {
-  const now = new Date().toISOString();
-  return [
-    {
-      id: 101,
-      name: "Smooth Transitions Vol.1",
-      desc: "60 ta silliq transition preset. CapCut va Premiere Pro uchun ideal.",
-      price: "Free",
-      apps: ["CapCut", "Premiere"],
-      tags: ["transition", "swipe", "fade"],
-      badge: "free",
-      status: "live",
-      img: "https://images.unsplash.com/photo-1536240478700-b869ad10e128?w=800&q=80",
-      download_url: "https://example.com",
-      uploaded_by: adminId,
-      created_at: now,
-    },
-    {
-      id: 102,
-      name: "Cinematic LUT Pack",
-      desc: "25 ta professional rang gradatsiyasi. DaVinci, Premiere va Final Cut uchun.",
-      price: "$12",
-      apps: ["DaVinci", "Premiere", "Final Cut"],
-      tags: ["lut", "grade", "cinematic", "color"],
-      badge: "hot",
-      status: "live",
-      img: "https://images.unsplash.com/photo-1518929458119-e5bf444c30f4?w=800&q=80",
-      download_url: "https://example.com",
-      uploaded_by: adminId,
-      created_at: now,
-    },
-    {
-      id: 103,
-      name: "Motion Blur FX",
-      desc: "20 ta motion blur overlay. After Effects va Premiere Pro uchun.",
-      price: "$7",
-      apps: ["After Effects", "Premiere"],
-      tags: ["motion", "blur", "whip", "shake"],
-      badge: "new",
-      status: "live",
-      img: "https://images.unsplash.com/photo-1551817958-d9d86fb29431?w=800&q=80",
-      download_url: "https://example.com",
-      uploaded_by: adminId,
-      created_at: now,
-    },
-    {
-      id: 104,
-      name: "CapCut Trending Pack",
-      desc: "50 ta trending effect va sticker. TikTok va Reels uchun.",
-      price: "Free",
-      apps: ["CapCut"],
-      tags: ["capcut", "trending", "flash", "beat"],
-      badge: "hot",
-      status: "live",
-      img: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&q=80",
-      download_url: "https://example.com",
-      uploaded_by: adminId,
-      created_at: now,
-    },
-  ];
+function defaultPacks() {
+  return [];
 }
 
 function createDefaultDb() {
@@ -220,7 +162,7 @@ function createDefaultDb() {
     role: "admin",
     created_at: new Date().toISOString(),
   };
-  return { users: [admin], packs: defaultPacks(admin.id), subscribers: [], scans: [] };
+  return { users: [admin], packs: defaultPacks(), subscribers: [], scans: [] };
 }
 
 async function getMongoStateCollection() {
