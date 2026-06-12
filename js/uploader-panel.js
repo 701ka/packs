@@ -2,9 +2,12 @@ const API = window.API_BASE || "/api";
 let myPacks = [];
 let editingId = null;
 let uploadedImgBase64 = null;
+let selectedCoverImage = null;
 let selectedPackFile = null;
 
 const MAX_PACK_FILE_SIZE = 250 * 1024 * 1024;
+const MAX_COVER_IMAGE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_COVER_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp"]);
 const ALLOWED_PACK_EXTENSIONS = new Set([
   "zip",
   "rar",

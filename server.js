@@ -25,8 +25,10 @@ const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 const UPLOAD_DIR = path.join(ROOT, "uploads", "packs");
+const COVER_UPLOAD_DIR = path.join(ROOT, "uploads", "covers");
 const MAX_JSON_BODY_SIZE = 10 * 1024 * 1024;
 const MAX_PACK_FILE_SIZE = 250 * 1024 * 1024;
+const MAX_COVER_IMAGE_SIZE = 5 * 1024 * 1024;
 const JWT_SECRET = process.env.JWT_SECRET || "editorpack-dev-secret-change-me";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "karimovbdulloh@gmail.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
@@ -84,6 +86,8 @@ const ALLOWED_PACK_EXTENSIONS = new Set([
   ".mov",
   ".webm",
 ]);
+
+const ALLOWED_COVER_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
   const hash = crypto
@@ -462,13 +466,51 @@ function savePackFile(file) {
   };
 }
 
+function validateCoverImage(file) {
+  if (!file || !file.buffer || !file.originalName) return null;
+  if (file.size <= 0) throw new PublicApiError(400, "Bo'sh rasm qabul qilinmaydi");
+  if (file.size > MAX_COVER_IMAGE_SIZE) {
+    throw new PublicApiError(413, "Rasm 5MB dan katta bo'lmasin");
+  }
+  const ext = path.extname(file.originalName).toLowerCase();
+  if (!ALLOWED_COVER_EXTENSIONS.has(ext)) {
+    throw new PublicApiError(400, "Faqat PNG, JPG yoki WEBP rasm qabul qilinadi");
+  }
+  const type = String(file.contentType || "").toLowerCase();
+  if (type && !type.startsWith("image/")) {
+    throw new PublicApiError(400, "Rasm fayli noto'g'ri");
+  }
+  if (hasDangerousSignature(file.buffer)) {
+    throw new PublicApiError(400, "Shubhali rasm qabul qilinmaydi");
+  }
+  return ext;
+}
+
+function saveCoverImage(file) {
+  const ext = validateCoverImage(file);
+  if (!ext) return null;
+  fs.mkdirSync(COVER_UPLOAD_DIR, { recursive: true });
+  const baseName = path
+    .basename(file.originalName, ext)
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "cover";
+  const storedName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}-${baseName}${ext}`;
+  fs.writeFileSync(path.join(COVER_UPLOAD_DIR, storedName), file.buffer);
+  return `/media/covers/${storedName}`;
+}
+
 async function parsePackRequest(req) {
   const contentType = req.headers["content-type"] || "";
   if (contentType.toLowerCase().startsWith("multipart/form-data")) {
     const { fields, files } = await parseMultipart(req);
-    return { body: fields, upload: savePackFile(files.pack_file) };
+    return {
+      body: fields,
+      upload: savePackFile(files.pack_file),
+      coverImg: saveCoverImage(files.cover_image),
+    };
   }
-  return { body: await parseBody(req), upload: null };
+  return { body: await parseBody(req), upload: null, coverImg: null };
 }
 
 function getAuthUser(req, db) {
@@ -710,13 +752,13 @@ async function handleApi(req, res, url) {
     if (!["uploader", "admin"].includes(user.role)) {
       return send(res, 403, { error: "Uploader huquqi kerak" });
     }
-    const { body, upload } = await parsePackRequest(req);
+    const { body, upload, coverImg } = await parsePackRequest(req);
     const pack = {
       id: Date.now(),
       name: String(body.name || "").trim(),
       desc: String(body.desc || "").trim(),
       price: body.price || "Free",
-      img: normalizeImageUrl(body.img),
+      img: coverImg || normalizeImageUrl(body.img),
       download_url: upload?.download_url || "",
       file_name: upload?.file_name || "",
       file_size: upload?.file_size || 0,
@@ -744,7 +786,7 @@ async function handleApi(req, res, url) {
     if (user.role !== "admin" && pack.uploaded_by !== user.id) {
       return send(res, 403, { error: "Ruxsat yo'q" });
     }
-    const { body, upload } = await parsePackRequest(req);
+    const { body, upload, coverImg } = await parsePackRequest(req);
     const nextDownloadUrl =
       upload?.download_url ||
       (user.role === "admin" && body.download_url ? body.download_url : pack.download_url);
@@ -752,7 +794,7 @@ async function handleApi(req, res, url) {
       name: body.name ?? pack.name,
       desc: body.desc ?? pack.desc,
       price: body.price ?? pack.price,
-      img: body.img === undefined ? pack.img : normalizeImageUrl(body.img),
+      img: coverImg || (body.img === undefined ? pack.img : normalizeImageUrl(body.img)),
       download_url: nextDownloadUrl,
       file_name: upload?.file_name || pack.file_name || "",
       file_size: upload?.file_size || pack.file_size || 0,
@@ -887,11 +929,31 @@ function serveStatic(req, res, url) {
   });
 }
 
+function serveCoverImage(req, res, url) {
+  const fileName = path.basename(decodeURIComponent(url.pathname.split("/").pop() || ""));
+  const full = path.normalize(path.join(COVER_UPLOAD_DIR, fileName));
+  if (!fileName || !full.startsWith(COVER_UPLOAD_DIR) || !fs.existsSync(full)) {
+    res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("Not found");
+    return;
+  }
+  res.writeHead(200, {
+    "Content-Type": MIME[path.extname(full).toLowerCase()] || "application/octet-stream",
+    "Cache-Control": "public, max-age=86400",
+    "X-Content-Type-Options": "nosniff",
+  });
+  fs.createReadStream(full).pipe(res);
+}
+
 async function appHandler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
     if (url.pathname.startsWith("/api/")) {
       await handleApi(req, res, url);
+      return;
+    }
+    if (url.pathname.startsWith("/media/covers/")) {
+      serveCoverImage(req, res, url);
       return;
     }
     serveStatic(req, res, url);
