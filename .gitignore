@@ -1,4 +1,6 @@
 node_modules/
 *.db
 data/db.json
+data/*.tmp
 .env
+uploads/

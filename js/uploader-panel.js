@@ -2,6 +2,34 @@ const API = window.API_BASE || "/api";
 let myPacks = [];
 let editingId = null;
 let uploadedImgBase64 = null;
+let selectedPackFile = null;
+
+const MAX_PACK_FILE_SIZE = 250 * 1024 * 1024;
+const ALLOWED_PACK_EXTENSIONS = new Set([
+  "zip",
+  "rar",
+  "7z",
+  "cpt",
+  "ccproject",
+  "aep",
+  "aepx",
+  "ffx",
+  "mogrt",
+  "prproj",
+  "prfpset",
+  "epr",
+  "cube",
+  "3dl",
+  "look",
+  "drp",
+  "drfx",
+  "setting",
+  "fcpxml",
+  "motn",
+  "mp4",
+  "mov",
+  "webm",
+]);
 
 function getUser() {
   return JSON.parse(localStorage.getItem("user") || "null");
@@ -248,6 +276,63 @@ function getImageValue() {
   return url || "";
 }
 
+function getFileExtension(fileName) {
+  const parts = String(fileName || "").toLowerCase().split(".");
+  return parts.length > 1 ? parts.pop() : "";
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return "0 MB";
+  const units = ["B", "KB", "MB", "GB"];
+  const exp = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1,
+  );
+  return `${(bytes / Math.pow(1024, exp)).toFixed(exp ? 1 : 0)} ${units[exp]}`;
+}
+
+function setPackFilePreview(name, size, fromServer = false) {
+  document.getElementById("packFileArea").style.display = "none";
+  document.getElementById("packFilePreview").style.display = "flex";
+  document.getElementById("packFileName").textContent = name || "Pack fayli";
+  document.getElementById("packFileMeta").textContent = fromServer
+    ? "Oldin yuklangan fayl. Yangisini tanlasangiz almashtiriladi."
+    : `${formatFileSize(size)} - yuborishga tayyor`;
+}
+
+function handlePackFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const ext = getFileExtension(file.name);
+  if (!ALLOWED_PACK_EXTENSIONS.has(ext)) {
+    showToast(
+      "Bu fayl turi qabul qilinmaydi. Faqat preset/pack yoki video yuklang.",
+      "warning",
+    );
+    input.value = "";
+    return;
+  }
+
+  if (file.size > MAX_PACK_FILE_SIZE) {
+    showToast("Pack fayli 250MB dan katta bo'lmasin!", "warning");
+    input.value = "";
+    return;
+  }
+
+  selectedPackFile = file;
+  setPackFilePreview(file.name, file.size);
+}
+
+function removePackFile() {
+  selectedPackFile = null;
+  document.getElementById("packFile").value = "";
+  document.getElementById("packFileArea").style.display = "block";
+  document.getElementById("packFilePreview").style.display = "none";
+  document.getElementById("packFileName").textContent = "";
+  document.getElementById("packFileMeta").textContent = "";
+}
+
 function handleImgUrlInput() {
   uploadedImgBase64 = null;
   updatePreview();
@@ -351,8 +436,8 @@ function resetForm() {
   document.getElementById("packBadge").value = "";
   document.getElementById("packTags").value = "";
   document.getElementById("packImgUrl").value = "";
-  document.getElementById("packDownload").value = "";
   document.getElementById("imgFile").value = "";
+  removePackFile();
   document.getElementById("imgUploadArea").style.display = "block";
   document.getElementById("imgPreviewWrap").style.display = "none";
   document
@@ -377,8 +462,14 @@ function openEdit(id) {
   document.getElementById("packBadge").value = p.badge || "";
   document.getElementById("packTags").value = parseList(p.tags).join(", ");
   document.getElementById("packImgUrl").value = p.img || "";
-  document.getElementById("packDownload").value = p.download_url || "";
   setPriceField(p.price || "");
+  selectedPackFile = null;
+  document.getElementById("packFile").value = "";
+  if (p.file_name || p.download_url) {
+    setPackFilePreview(p.file_name || "Pack fayli", p.file_size || 0, true);
+  } else {
+    removePackFile();
+  }
 
   if (p.img) {
     uploadedImgBase64 = null;
@@ -404,10 +495,13 @@ function openEdit(id) {
 async function submitPack() {
   const name = document.getElementById("packName").value.trim();
   const desc = document.getElementById("packDesc").value.trim();
-  const download_url = document.getElementById("packDownload").value.trim();
+  if (!name || !desc) {
+    showToast("Nomi va tavsif majburiy!", "warning");
+    return;
+  }
 
-  if (!name || !desc || !download_url) {
-    showToast("Nomi, tavsif va download URL majburiy!", "warning");
+  if (!editingId && !selectedPackFile) {
+    showToast("Pack fayli yoki video yuklash majburiy!", "warning");
     return;
   }
 
@@ -416,7 +510,6 @@ async function submitPack() {
     desc,
     price: getPriceValue(),
     img: getImageValue(),
-    download_url,
     badge: document.getElementById("packBadge").value,
     apps: getSelectedApps(),
     tags: getSelectedTags(),
@@ -431,14 +524,19 @@ async function submitPack() {
   btn.textContent = "Saqlanmoqda...";
 
   try {
+    const form = new FormData();
+    Object.entries(packData).forEach(([key, value]) => {
+      form.append(key, Array.isArray(value) ? JSON.stringify(value) : value);
+    });
+    if (selectedPackFile) form.append("pack_file", selectedPackFile);
+
     if (editingId) {
       const res = await fetch(`${API}/uploader/packs/${editingId}`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
           Authorization: "Bearer " + getToken(),
         },
-        body: JSON.stringify(packData),
+        body: form,
       });
       if (!res.ok) throw await apiError(res, "Saqlanmadi");
       showToast("✅ Saqlandi!", "success");
@@ -446,10 +544,9 @@ async function submitPack() {
       const res = await fetch(`${API}/uploader/packs`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: "Bearer " + getToken(),
         },
-        body: JSON.stringify(packData),
+        body: form,
       });
       if (!res.ok) throw await apiError(res, "Yuborilmadi");
       showToast(

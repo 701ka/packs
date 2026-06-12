@@ -202,12 +202,40 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">Download URL *</label>
-              <input
-                id="packDownload"
-                class="form-input"
-                placeholder="https://drive.google.com/..."
-              />
+              <label class="form-label">Pack fayli yoki video *</label>
+              <div
+                class="file-upload-area"
+                id="packFileArea"
+                onclick="document.getElementById('packFile').click()"
+              >
+                <div class="file-upload-icon">FILE</div>
+                <div class="file-upload-text" id="packFileText">
+                  Fayl yoki video yuklash uchun bosing
+                </div>
+                <div class="file-upload-sub">
+                  ZIP/RAR/7Z, CapCut/AE/Premiere presetlari, MP4/MOV/WEBM - max 250MB
+                </div>
+                <input
+                  type="file"
+                  id="packFile"
+                  accept=".zip,.rar,.7z,.cpt,.ccproject,.aep,.aepx,.ffx,.mogrt,.prproj,.prfpset,.epr,.cube,.3dl,.look,.drp,.drfx,.setting,.fcpxml,.motn,.mp4,.mov,.webm"
+                  style="display: none"
+                  onchange="handlePackFileSelect(this)"
+                />
+              </div>
+              <div
+                class="file-preview-wrap"
+                id="packFilePreview"
+                style="display: none"
+              >
+                <div>
+                  <div class="file-preview-name" id="packFileName"></div>
+                  <div class="file-preview-meta" id="packFileMeta"></div>
+                </div>
+                <button class="img-remove-btn" onclick="removePackFile()">
+                  O'chirish
+                </button>
+              </div>
             </div>
 
             <div class="upload-note">

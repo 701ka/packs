@@ -24,6 +24,9 @@ const PORT = process.env.PORT || 4000;
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
+const UPLOAD_DIR = path.join(ROOT, "uploads", "packs");
+const MAX_JSON_BODY_SIZE = 10 * 1024 * 1024;
+const MAX_PACK_FILE_SIZE = 250 * 1024 * 1024;
 const JWT_SECRET = process.env.JWT_SECRET || "editorpack-dev-secret-change-me";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "karimovbdulloh@gmail.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
@@ -51,7 +54,36 @@ const MIME = {
   ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
+  ".mp4": "video/mp4",
+  ".mov": "video/quicktime",
+  ".webm": "video/webm",
 };
+
+const ALLOWED_PACK_EXTENSIONS = new Set([
+  ".zip",
+  ".rar",
+  ".7z",
+  ".cpt",
+  ".ccproject",
+  ".aep",
+  ".aepx",
+  ".ffx",
+  ".mogrt",
+  ".prproj",
+  ".prfpset",
+  ".epr",
+  ".cube",
+  ".3dl",
+  ".look",
+  ".drp",
+  ".drfx",
+  ".setting",
+  ".fcpxml",
+  ".motn",
+  ".mp4",
+  ".mov",
+  ".webm",
+]);
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
   const hash = crypto
@@ -285,7 +317,13 @@ async function writeDb(db) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   const tmpFile = `${DB_FILE}.tmp`;
   fs.writeFileSync(tmpFile, JSON.stringify(db, null, 2));
-  fs.renameSync(tmpFile, DB_FILE);
+  try {
+    fs.renameSync(tmpFile, DB_FILE);
+  } catch (err) {
+    if (err.code !== "EPERM" && err.code !== "EACCES") throw err;
+    fs.copyFileSync(tmpFile, DB_FILE);
+    fs.unlinkSync(tmpFile);
+  }
 }
 
 function publicUser(user) {
@@ -307,12 +345,15 @@ function notFound(res) {
   send(res, 404, { error: "Topilmadi" });
 }
 
-function parseBody(req) {
+function parseBody(req, maxSize = MAX_JSON_BODY_SIZE) {
   return new Promise((resolve, reject) => {
     let body = "";
     req.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 10 * 1024 * 1024) req.destroy();
+      if (Buffer.byteLength(body) > maxSize) {
+        reject(new PublicApiError(413, "So'rov hajmi juda katta"));
+        req.destroy();
+      }
     });
     req.on("end", () => {
       if (!body) return resolve({});
@@ -322,7 +363,170 @@ function parseBody(req) {
         reject(err);
       }
     });
+    req.on("error", reject);
   });
+}
+
+function splitMultipartBuffer(buffer, boundary) {
+  const delimiter = Buffer.from(`--${boundary}`);
+  const parts = [];
+  let start = buffer.indexOf(delimiter);
+  while (start !== -1) {
+    start += delimiter.length;
+    if (buffer[start] === 45 && buffer[start + 1] === 45) break;
+    if (buffer[start] === 13 && buffer[start + 1] === 10) start += 2;
+    let end = buffer.indexOf(delimiter, start);
+    if (end === -1) break;
+    let part = buffer.slice(start, end);
+    if (part.length >= 2 && part[part.length - 2] === 13 && part[part.length - 1] === 10) {
+      part = part.slice(0, -2);
+    }
+    parts.push(part);
+    start = end;
+  }
+  return parts;
+}
+
+function parseContentDisposition(value) {
+  const result = {};
+  String(value || "")
+    .split(";")
+    .slice(1)
+    .forEach((piece) => {
+      const eq = piece.indexOf("=");
+      if (eq === -1) return;
+      const key = piece.slice(0, eq).trim();
+      const raw = piece.slice(eq + 1).trim();
+      result[key] = raw.replace(/^"|"$/g, "");
+    });
+  return result;
+}
+
+function parseMultipart(req) {
+  return new Promise((resolve, reject) => {
+    const contentType = req.headers["content-type"] || "";
+    const boundary = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[1] ||
+      contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[2];
+    if (!boundary) return reject(new PublicApiError(400, "Multipart boundary topilmadi"));
+
+    const chunks = [];
+    let total = 0;
+    const maxSize = MAX_PACK_FILE_SIZE + MAX_JSON_BODY_SIZE;
+    req.on("data", (chunk) => {
+      total += chunk.length;
+      if (total > maxSize) {
+        reject(new PublicApiError(413, "Pack fayli 250MB dan katta bo'lmasin"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      const buffer = Buffer.concat(chunks);
+      const fields = {};
+      const files = {};
+
+      splitMultipartBuffer(buffer, boundary).forEach((part) => {
+        const headerEnd = part.indexOf(Buffer.from("\r\n\r\n"));
+        if (headerEnd === -1) return;
+        const headerText = part.slice(0, headerEnd).toString("utf8");
+        const body = part.slice(headerEnd + 4);
+        const headers = {};
+        headerText.split(/\r\n/).forEach((line) => {
+          const sep = line.indexOf(":");
+          if (sep === -1) return;
+          headers[line.slice(0, sep).trim().toLowerCase()] = line.slice(sep + 1).trim();
+        });
+        const disposition = parseContentDisposition(headers["content-disposition"]);
+        if (!disposition.name) return;
+        if (disposition.filename) {
+          files[disposition.name] = {
+            originalName: path.basename(disposition.filename),
+            contentType: headers["content-type"] || "application/octet-stream",
+            buffer: body,
+            size: body.length,
+          };
+          return;
+        }
+        fields[disposition.name] = body.toString("utf8");
+      });
+
+      resolve({ fields, files });
+    });
+    req.on("error", reject);
+  });
+}
+
+function parseMaybeJsonList(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return String(value)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+}
+
+function hasDangerousSignature(buffer) {
+  if (!buffer || buffer.length < 2) return false;
+  const head = buffer.slice(0, 256).toString("utf8").trimStart().toLowerCase();
+  return (
+    buffer.slice(0, 2).toString("ascii") === "MZ" ||
+    head.startsWith("#!") ||
+    head.startsWith("<script") ||
+    head.startsWith("<!doctype html") ||
+    head.startsWith("<html") ||
+    head.startsWith("<?php")
+  );
+}
+
+function validatePackFile(file) {
+  if (!file || !file.buffer || !file.originalName) return null;
+  if (file.size <= 0) throw new PublicApiError(400, "Bo'sh fayl qabul qilinmaydi");
+  if (file.size > MAX_PACK_FILE_SIZE) {
+    throw new PublicApiError(413, "Pack fayli 250MB dan katta bo'lmasin");
+  }
+  const ext = path.extname(file.originalName).toLowerCase();
+  if (!ALLOWED_PACK_EXTENSIONS.has(ext)) {
+    throw new PublicApiError(400, "Bu fayl turi qabul qilinmaydi. Faqat preset/pack yoki video yuklang.");
+  }
+  if (hasDangerousSignature(file.buffer)) {
+    throw new PublicApiError(400, "Shubhali fayl qabul qilinmaydi");
+  }
+  return ext;
+}
+
+function savePackFile(file) {
+  const ext = validatePackFile(file);
+  if (!ext) return null;
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  const baseName = path
+    .basename(file.originalName, ext)
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "pack";
+  const storedName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}-${baseName}${ext}`;
+  const fullPath = path.join(UPLOAD_DIR, storedName);
+  fs.writeFileSync(fullPath, file.buffer);
+  return {
+    download_url: `/uploads/packs/${storedName}`,
+    file_name: file.originalName,
+    file_size: file.size,
+    file_type: ext.slice(1),
+  };
+}
+
+async function parsePackRequest(req) {
+  const contentType = req.headers["content-type"] || "";
+  if (contentType.toLowerCase().startsWith("multipart/form-data")) {
+    const { fields, files } = await parseMultipart(req);
+    return { body: fields, upload: savePackFile(files.pack_file) };
+  }
+  return { body: await parseBody(req), upload: null };
 }
 
 function getAuthUser(req, db) {
@@ -511,17 +715,20 @@ async function handleApi(req, res, url) {
     if (!["uploader", "admin"].includes(user.role)) {
       return send(res, 403, { error: "Uploader huquqi kerak" });
     }
-    const body = await parseBody(req);
+    const { body, upload } = await parsePackRequest(req);
     const pack = {
       id: Date.now(),
       name: String(body.name || "").trim(),
       desc: String(body.desc || "").trim(),
       price: body.price || "Free",
       img: normalizeImageUrl(body.img),
-      download_url: body.download_url || "",
+      download_url: upload?.download_url || body.download_url || "",
+      file_name: upload?.file_name || "",
+      file_size: upload?.file_size || 0,
+      file_type: upload?.file_type || "",
       badge: body.badge || "",
-      apps: Array.isArray(body.apps) ? body.apps : [],
-      tags: Array.isArray(body.tags) ? body.tags : [],
+      apps: parseMaybeJsonList(body.apps),
+      tags: parseMaybeJsonList(body.tags),
       status: user.role === "admin" ? body.status || "live" : "pending",
       uploaded_by: user.id,
       created_at: new Date().toISOString(),
@@ -542,16 +749,19 @@ async function handleApi(req, res, url) {
     if (user.role !== "admin" && pack.uploaded_by !== user.id) {
       return send(res, 403, { error: "Ruxsat yo'q" });
     }
-    const body = await parseBody(req);
+    const { body, upload } = await parsePackRequest(req);
     Object.assign(pack, {
       name: body.name ?? pack.name,
       desc: body.desc ?? pack.desc,
       price: body.price ?? pack.price,
       img: body.img === undefined ? pack.img : normalizeImageUrl(body.img),
-      download_url: body.download_url ?? pack.download_url,
+      download_url: upload?.download_url || body.download_url || pack.download_url,
+      file_name: upload?.file_name || pack.file_name || "",
+      file_size: upload?.file_size || pack.file_size || 0,
+      file_type: upload?.file_type || pack.file_type || "",
       badge: body.badge ?? pack.badge,
-      apps: Array.isArray(body.apps) ? body.apps : pack.apps,
-      tags: Array.isArray(body.tags) ? body.tags : pack.tags || [],
+      apps: body.apps === undefined ? pack.apps : parseMaybeJsonList(body.apps),
+      tags: body.tags === undefined ? pack.tags || [] : parseMaybeJsonList(body.tags),
       status: user.role === "admin" ? body.status || pack.status : "pending",
     });
     await writeDb(db);
