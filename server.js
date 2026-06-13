@@ -13,7 +13,10 @@ function loadLocalEnv() {
     const eq = trimmed.indexOf("=");
     if (eq === -1) return;
     const key = trimmed.slice(0, eq).trim();
-    const value = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
+    const value = trimmed
+      .slice(eq + 1)
+      .trim()
+      .replace(/^["']|["']$/g, "");
     if (key && process.env[key] === undefined) process.env[key] = value;
   });
 }
@@ -191,7 +194,11 @@ function isEphemeralServer() {
 }
 
 function assertWritableStorage() {
-  if (isEphemeralServer() && (!MONGODB_URI || mongoDisabledReason) && !memoryDb) {
+  if (
+    isEphemeralServer() &&
+    (!MONGODB_URI || mongoDisabledReason) &&
+    !memoryDb
+  ) {
     useMemoryDb("MongoDB ulanmagan. Vaqtinchalik memory storage ishlatyapti.");
   }
 }
@@ -202,7 +209,8 @@ async function seedDb() {
       const state = await getMongoStateCollection();
       if (state) {
         const exists = await state.findOne({ _id: "main" });
-        if (!exists) await state.insertOne({ _id: "main", ...createDefaultDb() });
+        if (!exists)
+          await state.insertOne({ _id: "main", ...createDefaultDb() });
         return;
       }
     } catch (err) {
@@ -248,7 +256,14 @@ async function writeDb(db) {
       const state = await getMongoStateCollection();
       await state.updateOne(
         { _id: "main" },
-        { $set: { users: db.users, packs: db.packs, subscribers: db.subscribers || [], scans: db.scans || [] } },
+        {
+          $set: {
+            users: db.users,
+            packs: db.packs,
+            subscribers: db.subscribers || [],
+            scans: db.scans || [],
+          },
+        },
         { upsert: true },
       );
       return;
@@ -268,7 +283,7 @@ async function writeDb(db) {
   } catch (err) {
     if (err.code !== "EPERM" && err.code !== "EACCES") throw err;
     fs.copyFileSync(tmpFile, DB_FILE);
-    fs.unlinkSync(tmpFile);
+    try { fs.unlinkSync(tmpFile); } catch {} // OneDrive locks the file — ignore
   }
 }
 
@@ -324,7 +339,11 @@ function splitMultipartBuffer(buffer, boundary) {
     let end = buffer.indexOf(delimiter, start);
     if (end === -1) break;
     let part = buffer.slice(start, end);
-    if (part.length >= 2 && part[part.length - 2] === 13 && part[part.length - 1] === 10) {
+    if (
+      part.length >= 2 &&
+      part[part.length - 2] === 13 &&
+      part[part.length - 1] === 10
+    ) {
       part = part.slice(0, -2);
     }
     parts.push(part);
@@ -351,9 +370,11 @@ function parseContentDisposition(value) {
 function parseMultipart(req) {
   return new Promise((resolve, reject) => {
     const contentType = req.headers["content-type"] || "";
-    const boundary = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[1] ||
+    const boundary =
+      contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[1] ||
       contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[2];
-    if (!boundary) return reject(new PublicApiError(400, "Multipart boundary topilmadi"));
+    if (!boundary)
+      return reject(new PublicApiError(400, "Multipart boundary topilmadi"));
 
     const chunks = [];
     let total = 0;
@@ -381,9 +402,13 @@ function parseMultipart(req) {
         headerText.split(/\r\n/).forEach((line) => {
           const sep = line.indexOf(":");
           if (sep === -1) return;
-          headers[line.slice(0, sep).trim().toLowerCase()] = line.slice(sep + 1).trim();
+          headers[line.slice(0, sep).trim().toLowerCase()] = line
+            .slice(sep + 1)
+            .trim();
         });
-        const disposition = parseContentDisposition(headers["content-disposition"]);
+        const disposition = parseContentDisposition(
+          headers["content-disposition"],
+        );
         if (!disposition.name) return;
         if (disposition.filename) {
           files[disposition.name] = {
@@ -432,13 +457,17 @@ function hasDangerousSignature(buffer) {
 
 function validatePackFile(file) {
   if (!file || !file.buffer || !file.originalName) return null;
-  if (file.size <= 0) throw new PublicApiError(400, "Bo'sh fayl qabul qilinmaydi");
+  if (file.size <= 0)
+    throw new PublicApiError(400, "Bo'sh fayl qabul qilinmaydi");
   if (file.size > MAX_PACK_FILE_SIZE) {
     throw new PublicApiError(413, "Pack fayli 250MB dan katta bo'lmasin");
   }
   const ext = path.extname(file.originalName).toLowerCase();
   if (!ALLOWED_PACK_EXTENSIONS.has(ext)) {
-    throw new PublicApiError(400, "Bu fayl turi qabul qilinmaydi. Faqat preset/pack yoki video yuklang.");
+    throw new PublicApiError(
+      400,
+      "Bu fayl turi qabul qilinmaydi. Faqat preset/pack yoki video yuklang.",
+    );
   }
   if (hasDangerousSignature(file.buffer)) {
     throw new PublicApiError(400, "Shubhali fayl qabul qilinmaydi");
@@ -446,15 +475,48 @@ function validatePackFile(file) {
   return ext;
 }
 
-function savePackFile(file) {
+function cloudinaryUpload(buffer, options) {
+  return new Promise((resolve, reject) => {
+    const { v2: cld } = require("cloudinary");
+    const stream = cld.uploader.upload_stream(options, (err, result) => {
+      if (err) reject(err);
+      else resolve(result);
+    });
+    stream.end(buffer);
+  });
+}
+
+async function savePackFile(file) {
   const ext = validatePackFile(file);
   if (!ext) return null;
+
+  if (process.env.CLOUDINARY_URL) {
+    try {
+      const result = await cloudinaryUpload(file.buffer, {
+        resource_type: "raw",
+        folder: "editorpack/packs",
+        public_id: `${Date.now()}-${file.originalName.replace(/[^a-z0-9._-]/gi, "-").slice(0, 80)}`,
+        use_filename: false,
+      });
+      return {
+        download_url: result.secure_url,
+        file_name: file.originalName,
+        file_size: file.size,
+        file_type: ext.slice(1),
+      };
+    } catch (err) {
+      console.error("[cloudinary] Pack upload failed:", err.message);
+      throw new PublicApiError(500, "Fayl yuklashda xatolik. Qayta urinib ko'ring.");
+    }
+  }
+
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  const baseName = path
-    .basename(file.originalName, ext)
-    .replace(/[^a-z0-9_-]+/gi, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "pack";
+  const baseName =
+    path
+      .basename(file.originalName, ext)
+      .replace(/[^a-z0-9_-]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "pack";
   const storedName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}-${baseName}${ext}`;
   const fullPath = path.join(UPLOAD_DIR, storedName);
   fs.writeFileSync(fullPath, file.buffer);
@@ -468,13 +530,17 @@ function savePackFile(file) {
 
 function validateCoverImage(file) {
   if (!file || !file.buffer || !file.originalName) return null;
-  if (file.size <= 0) throw new PublicApiError(400, "Bo'sh rasm qabul qilinmaydi");
+  if (file.size <= 0)
+    throw new PublicApiError(400, "Bo'sh rasm qabul qilinmaydi");
   if (file.size > MAX_COVER_IMAGE_SIZE) {
     throw new PublicApiError(413, "Rasm 5MB dan katta bo'lmasin");
   }
   const ext = path.extname(file.originalName).toLowerCase();
   if (!ALLOWED_COVER_EXTENSIONS.has(ext)) {
-    throw new PublicApiError(400, "Faqat PNG, JPG yoki WEBP rasm qabul qilinadi");
+    throw new PublicApiError(
+      400,
+      "Faqat PNG, JPG yoki WEBP rasm qabul qilinadi",
+    );
   }
   const type = String(file.contentType || "").toLowerCase();
   if (type && !type.startsWith("image/")) {
@@ -486,15 +552,30 @@ function validateCoverImage(file) {
   return ext;
 }
 
-function saveCoverImage(file) {
+async function saveCoverImage(file) {
   const ext = validateCoverImage(file);
   if (!ext) return null;
+
+  if (process.env.CLOUDINARY_URL) {
+    try {
+      const result = await cloudinaryUpload(file.buffer, {
+        resource_type: "image",
+        folder: "editorpack/covers",
+      });
+      return result.secure_url;
+    } catch (err) {
+      console.error("[cloudinary] Cover upload failed:", err.message);
+      throw new PublicApiError(500, "Rasm yuklashda xatolik. Qayta urinib ko'ring.");
+    }
+  }
+
   fs.mkdirSync(COVER_UPLOAD_DIR, { recursive: true });
-  const baseName = path
-    .basename(file.originalName, ext)
-    .replace(/[^a-z0-9_-]+/gi, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "cover";
+  const baseName =
+    path
+      .basename(file.originalName, ext)
+      .replace(/[^a-z0-9_-]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "cover";
   const storedName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}-${baseName}${ext}`;
   fs.writeFileSync(path.join(COVER_UPLOAD_DIR, storedName), file.buffer);
   return `/media/covers/${storedName}`;
@@ -504,11 +585,11 @@ async function parsePackRequest(req) {
   const contentType = req.headers["content-type"] || "";
   if (contentType.toLowerCase().startsWith("multipart/form-data")) {
     const { fields, files } = await parseMultipart(req);
-    return {
-      body: fields,
-      upload: savePackFile(files.pack_file),
-      coverImg: saveCoverImage(files.cover_image),
-    };
+    const [upload, coverImg] = await Promise.all([
+      savePackFile(files.pack_file),
+      saveCoverImage(files.cover_image),
+    ]);
+    return { body: fields, upload, coverImg };
   }
   return { body: await parseBody(req), upload: null, coverImg: null };
 }
@@ -540,7 +621,8 @@ function requireAdmin(req, res, db) {
 function withUploader(pack, db) {
   const uploader = db.users.find((u) => u.id === pack.uploaded_by);
   const safeImg =
-    typeof pack.img === "string" && pack.img.trim().toLowerCase().startsWith("data:image/")
+    typeof pack.img === "string" &&
+    pack.img.trim().toLowerCase().startsWith("data:image/")
       ? ""
       : pack.img;
   return {
@@ -552,7 +634,10 @@ function withUploader(pack, db) {
 }
 
 function publicPack(pack, db) {
-  const { download_url, uploader_email, uploaded_by, ...safe } = withUploader(pack, db);
+  const { download_url, uploader_email, uploaded_by, ...safe } = withUploader(
+    pack,
+    db,
+  );
   return {
     ...safe,
     has_download: Boolean(download_url),
@@ -573,17 +658,28 @@ function sendFileDownload(res, pack) {
     res.end();
     return;
   }
+  if (!downloadUrl) {
+    throw new PublicApiError(404, "Bu pack uchun fayl yuklanmagan");
+  }
   if (!downloadUrl.startsWith("/uploads/packs/")) {
     throw new PublicApiError(404, "Pack fayli topilmadi");
   }
   const fileName = path.basename(downloadUrl);
-  const full = path.normalize(path.join(UPLOAD_DIR, fileName));
-  if (!full.startsWith(UPLOAD_DIR) || !fs.existsSync(full)) {
-    throw new PublicApiError(404, "Pack fayli topilmadi");
+  const full = path.normalize(path.join(UPLOAD_DIR + path.sep, fileName));
+  if (!full.startsWith(UPLOAD_DIR + path.sep)) {
+    throw new PublicApiError(403, "Ruxsat yo'q");
   }
-  const displayName = String(pack.file_name || fileName).replace(/["\r\n]/g, "");
+  if (!fs.existsSync(full)) {
+    console.error(`[download] File not found: ${full}`);
+    throw new PublicApiError(404, "Pack fayli serverda topilmadi. Admin bilan bog'laning.");
+  }
+  const displayName = String(pack.file_name || fileName).replace(
+    /["\r\n]/g,
+    "",
+  );
   res.writeHead(200, {
-    "Content-Type": MIME[path.extname(full).toLowerCase()] || "application/octet-stream",
+    "Content-Type":
+      MIME[path.extname(full).toLowerCase()] || "application/octet-stream",
     "Content-Length": fs.statSync(full).size,
     "Content-Disposition": `attachment; filename="${displayName}"`,
     "Cache-Control": "private, no-store",
@@ -595,7 +691,10 @@ function sendFileDownload(res, pack) {
 function normalizeImageUrl(value) {
   const img = String(value || "").trim();
   if (img.toLowerCase().startsWith("data:image/")) {
-    throw new PublicApiError(400, "Rasmni base64 qilib yubormang. Rasm uchun URL kiriting.");
+    throw new PublicApiError(
+      400,
+      "Rasmni base64 qilib yubormang. Rasm uchun URL kiriting.",
+    );
   }
   return img;
 }
@@ -613,10 +712,19 @@ async function handleApi(req, res, url) {
     try {
       await readDb();
       dbOk = true;
-      storage = MONGODB_URI && !mongoDisabledReason ? "mongodb" : memoryDb ? "memory" : "file";
+      storage =
+        MONGODB_URI && !mongoDisabledReason
+          ? "mongodb"
+          : memoryDb
+            ? "memory"
+            : "file";
     } catch (err) {
       dbError = err.message;
-      storage = memoryDb ? "memory" : MONGODB_URI ? "mongodb-error" : "file-error";
+      storage = memoryDb
+        ? "memory"
+        : MONGODB_URI
+          ? "mongodb-error"
+          : "file-error";
     }
     return send(res, 200, {
       ok: true,
@@ -633,7 +741,9 @@ async function handleApi(req, res, url) {
   if (method === "POST" && parts.join("/") === "auth/signup") {
     const body = await parseBody(req);
     const name = String(body.name || "").trim();
-    const email = String(body.email || "").trim().toLowerCase();
+    const email = String(body.email || "")
+      .trim()
+      .toLowerCase();
     const password = String(body.password || "");
     if (!name || !email || password.length < 4) {
       return send(res, 400, { error: "Ism, email va parol kiriting" });
@@ -656,9 +766,14 @@ async function handleApi(req, res, url) {
 
   if (method === "POST" && parts.join("/") === "auth/login") {
     const body = await parseBody(req);
-    const email = String(body.email || "").trim().toLowerCase();
+    const email = String(body.email || "")
+      .trim()
+      .toLowerCase();
     const user = db.users.find((u) => u.email === email);
-    if (!user || !verifyPassword(String(body.password || ""), user.password_hash)) {
+    if (
+      !user ||
+      !verifyPassword(String(body.password || ""), user.password_hash)
+    ) {
       return send(res, 401, { error: "Email yoki parol noto'g'ri" });
     }
     return send(res, 200, { token: signToken(user), user: publicUser(user) });
@@ -678,7 +793,12 @@ async function handleApi(req, res, url) {
     );
   }
 
-  if (method === "GET" && parts.length === 3 && parts[0] === "packs" && parts[2] === "download") {
+  if (
+    method === "GET" &&
+    parts.length === 3 &&
+    parts[0] === "packs" &&
+    parts[2] === "download"
+  ) {
     const user = requireUser(req, res, db);
     if (!user) return;
     const pack = db.packs.find((p) => p.id === Number(parts[1]));
@@ -690,7 +810,9 @@ async function handleApi(req, res, url) {
   }
 
   if (method === "GET" && parts.length === 2 && parts[0] === "packs") {
-    const pack = db.packs.find((p) => p.id === Number(parts[1]) && p.status === "live");
+    const pack = db.packs.find(
+      (p) => p.id === Number(parts[1]) && p.status === "live",
+    );
     if (!pack) return notFound(res);
     return send(res, 200, publicPack(pack, db));
   }
@@ -709,7 +831,8 @@ async function handleApi(req, res, url) {
     const user = requireUser(req, res, db);
     if (!user) return;
     const body = await parseBody(req);
-    const result = body.result && typeof body.result === "object" ? body.result : {};
+    const result =
+      body.result && typeof body.result === "object" ? body.result : {};
     const scan = {
       id: Date.now(),
       user_id: user.id,
@@ -719,9 +842,13 @@ async function handleApi(req, res, url) {
         intensity: Number(result.intensity) || 0,
         label: String(result.label || "Low"),
         metrics: result.metrics || {},
-        effects: Array.isArray(result.effects) ? result.effects.slice(0, 10) : [],
+        effects: Array.isArray(result.effects)
+          ? result.effects.slice(0, 10)
+          : [],
         events: Array.isArray(result.events) ? result.events.slice(0, 8) : [],
-        recommendations: Array.isArray(result.recommendations) ? result.recommendations.slice(0, 5) : [],
+        recommendations: Array.isArray(result.recommendations)
+          ? result.recommendations.slice(0, 5)
+          : [],
       },
       created_at: new Date().toISOString(),
     };
@@ -741,7 +868,9 @@ async function handleApi(req, res, url) {
     return send(
       res,
       200,
-      db.packs.filter((p) => p.uploaded_by === user.id).map((p) => withUploader(p, db)),
+      db.packs
+        .filter((p) => p.uploaded_by === user.id)
+        .map((p) => withUploader(p, db)),
     );
   }
 
@@ -777,7 +906,12 @@ async function handleApi(req, res, url) {
     return send(res, 201, withUploader(pack, db));
   }
 
-  if (method === "PUT" && parts.length === 3 && parts[0] === "uploader" && parts[1] === "packs") {
+  if (
+    method === "PUT" &&
+    parts.length === 3 &&
+    parts[0] === "uploader" &&
+    parts[1] === "packs"
+  ) {
     const user = requireUser(req, res, db);
     if (!user) return;
     const pack = db.packs.find((p) => p.id === Number(parts[2]));
@@ -788,26 +922,38 @@ async function handleApi(req, res, url) {
     const { body, upload, coverImg } = await parsePackRequest(req);
     const nextDownloadUrl =
       upload?.download_url ||
-      (user.role === "admin" && body.download_url ? body.download_url : pack.download_url);
+      (user.role === "admin" && body.download_url
+        ? body.download_url
+        : pack.download_url);
     Object.assign(pack, {
       name: body.name ?? pack.name,
       desc: body.desc ?? pack.desc,
       price: body.price ?? pack.price,
-      img: coverImg || (body.img === undefined ? pack.img : normalizeImageUrl(body.img)),
+      img:
+        coverImg ||
+        (body.img === undefined ? pack.img : normalizeImageUrl(body.img)),
       download_url: nextDownloadUrl,
       file_name: upload?.file_name || pack.file_name || "",
       file_size: upload?.file_size || pack.file_size || 0,
       file_type: upload?.file_type || pack.file_type || "",
       badge: body.badge ?? pack.badge,
       apps: body.apps === undefined ? pack.apps : parseMaybeJsonList(body.apps),
-      tags: body.tags === undefined ? pack.tags || [] : parseMaybeJsonList(body.tags),
+      tags:
+        body.tags === undefined
+          ? pack.tags || []
+          : parseMaybeJsonList(body.tags),
       status: user.role === "admin" ? body.status || pack.status : "pending",
     });
     await writeDb(db);
     return send(res, 200, withUploader(pack, db));
   }
 
-  if (method === "DELETE" && parts.length === 3 && parts[0] === "uploader" && parts[1] === "packs") {
+  if (
+    method === "DELETE" &&
+    parts.length === 3 &&
+    parts[0] === "uploader" &&
+    parts[1] === "packs"
+  ) {
     const user = requireUser(req, res, db);
     if (!user) return;
     const pack = db.packs.find((p) => p.id === Number(parts[2]));
@@ -825,12 +971,19 @@ async function handleApi(req, res, url) {
     return send(res, 200, db.users.map(publicUser));
   }
 
-  if (method === "PUT" && parts.length === 4 && parts[0] === "admin" && parts[1] === "users" && parts[3] === "role") {
+  if (
+    method === "PUT" &&
+    parts.length === 4 &&
+    parts[0] === "admin" &&
+    parts[1] === "users" &&
+    parts[3] === "role"
+  ) {
     if (!requireAdmin(req, res, db)) return;
     const body = await parseBody(req);
     const user = db.users.find((u) => u.id === Number(parts[2]));
     if (!user) return notFound(res);
-    if (user.email === ADMIN_EMAIL) return send(res, 400, { error: "Asosiy admin himoyalangan" });
+    if (user.email === ADMIN_EMAIL)
+      return send(res, 400, { error: "Asosiy admin himoyalangan" });
     if (!["user", "uploader", "admin"].includes(body.role)) {
       return send(res, 400, { error: "Role noto'g'ri" });
     }
@@ -839,24 +992,42 @@ async function handleApi(req, res, url) {
     return send(res, 200, publicUser(user));
   }
 
-  if (method === "DELETE" && parts.length === 3 && parts[0] === "admin" && parts[1] === "users") {
+  if (
+    method === "DELETE" &&
+    parts.length === 3 &&
+    parts[0] === "admin" &&
+    parts[1] === "users"
+  ) {
     if (!requireAdmin(req, res, db)) return;
     const user = db.users.find((u) => u.id === Number(parts[2]));
     if (!user) return notFound(res);
-    if (user.email === ADMIN_EMAIL) return send(res, 400, { error: "Asosiy admin himoyalangan" });
+    if (user.email === ADMIN_EMAIL)
+      return send(res, 400, { error: "Asosiy admin himoyalangan" });
     db.users = db.users.filter((u) => u.id !== Number(parts[2]));
     db.packs = db.packs.filter((p) => p.uploaded_by !== Number(parts[2]));
-    db.scans = (db.scans || []).filter((scan) => scan.user_id !== Number(parts[2]));
+    db.scans = (db.scans || []).filter(
+      (scan) => scan.user_id !== Number(parts[2]),
+    );
     await writeDb(db);
     return send(res, 200, { ok: true });
   }
 
   if (method === "GET" && parts.join("/") === "admin/packs") {
     if (!requireAdmin(req, res, db)) return;
-    return send(res, 200, db.packs.map((p) => withUploader(p, db)));
+    return send(
+      res,
+      200,
+      db.packs.map((p) => withUploader(p, db)),
+    );
   }
 
-  if (method === "PUT" && parts.length === 4 && parts[0] === "admin" && parts[1] === "packs" && parts[3] === "status") {
+  if (
+    method === "PUT" &&
+    parts.length === 4 &&
+    parts[0] === "admin" &&
+    parts[1] === "packs" &&
+    parts[3] === "status"
+  ) {
     if (!requireAdmin(req, res, db)) return;
     const body = await parseBody(req);
     const pack = db.packs.find((p) => p.id === Number(parts[2]));
@@ -869,7 +1040,12 @@ async function handleApi(req, res, url) {
     return send(res, 200, withUploader(pack, db));
   }
 
-  if (method === "PUT" && parts.length === 3 && parts[0] === "admin" && parts[1] === "packs") {
+  if (
+    method === "PUT" &&
+    parts.length === 3 &&
+    parts[0] === "admin" &&
+    parts[1] === "packs"
+  ) {
     if (!requireAdmin(req, res, db)) return;
     const body = await parseBody(req);
     const pack = db.packs.find((p) => p.id === Number(parts[2]));
@@ -884,7 +1060,12 @@ async function handleApi(req, res, url) {
     return send(res, 200, withUploader(pack, db));
   }
 
-  if (method === "DELETE" && parts.length === 3 && parts[0] === "admin" && parts[1] === "packs") {
+  if (
+    method === "DELETE" &&
+    parts.length === 3 &&
+    parts[0] === "admin" &&
+    parts[1] === "packs"
+  ) {
     if (!requireAdmin(req, res, db)) return;
     db.packs = db.packs.filter((p) => p.id !== Number(parts[2]));
     await writeDb(db);
@@ -899,7 +1080,8 @@ async function handleApi(req, res, url) {
     if (!prompt) return send(res, 400, { error: "Prompt kiritilmadi" });
 
     const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-    if (!ANTHROPIC_KEY) return send(res, 503, { error: "AI xizmati sozlanmagan" });
+    if (!ANTHROPIC_KEY)
+      return send(res, 503, { error: "AI xizmati sozlanmagan" });
 
     const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -915,13 +1097,18 @@ async function handleApi(req, res, url) {
       }),
     });
     const aiData = await aiRes.json();
-    if (!aiRes.ok) return send(res, aiRes.status, { error: aiData.error?.message || "AI xatolik" });
+    if (!aiRes.ok)
+      return send(res, aiRes.status, {
+        error: aiData.error?.message || "AI xatolik",
+      });
     return send(res, 200, { text: aiData.content?.[0]?.text || "" });
   }
 
   if (method === "POST" && parts[0] === "newsletter") {
     const body = await parseBody(req);
-    const email = String(body.email || "").trim().toLowerCase();
+    const email = String(body.email || "")
+      .trim()
+      .toLowerCase();
     if (!email) return send(res, 400, { error: "Email kiriting" });
     if (!db.subscribers.includes(email)) db.subscribers.push(email);
     await writeDb(db);
@@ -951,21 +1138,26 @@ function serveStatic(req, res, url) {
       res.end("Not found");
       return;
     }
-    res.writeHead(200, { "Content-Type": MIME[path.extname(full)] || "application/octet-stream" });
+    res.writeHead(200, {
+      "Content-Type": MIME[path.extname(full)] || "application/octet-stream",
+    });
     res.end(data);
   });
 }
 
 function serveCoverImage(req, res, url) {
-  const fileName = path.basename(decodeURIComponent(url.pathname.split("/").pop() || ""));
-  const full = path.normalize(path.join(COVER_UPLOAD_DIR, fileName));
-  if (!fileName || !full.startsWith(COVER_UPLOAD_DIR) || !fs.existsSync(full)) {
+  const fileName = path.basename(
+    decodeURIComponent(url.pathname.split("/").pop() || ""),
+  );
+  const full = path.normalize(path.join(COVER_UPLOAD_DIR + path.sep, fileName));
+  if (!fileName || !full.startsWith(COVER_UPLOAD_DIR + path.sep) || !fs.existsSync(full)) {
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
     res.end("Not found");
     return;
   }
   res.writeHead(200, {
-    "Content-Type": MIME[path.extname(full).toLowerCase()] || "application/octet-stream",
+    "Content-Type":
+      MIME[path.extname(full).toLowerCase()] || "application/octet-stream",
     "Cache-Control": "public, max-age=86400",
     "X-Content-Type-Options": "nosniff",
   });
@@ -991,10 +1183,10 @@ async function appHandler(req, res) {
       error:
         err.publicMessage ||
         (process.env.VERCEL ? err.message : "Server xatoligi"),
-      detail: process.env.VERCEL && !err.publicMessage ? err.message : undefined,
+      detail:
+        process.env.VERCEL && !err.publicMessage ? err.message : undefined,
     });
   }
-
 }
 
 const server = http.createServer(appHandler);
@@ -1002,7 +1194,9 @@ const server = http.createServer(appHandler);
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
     console.error("");
-    console.error(`Port ${PORT} band. Server allaqachon ishlayotgan bo'lishi mumkin.`);
+    console.error(
+      `Port ${PORT} band. Server allaqachon ishlayotgan bo'lishi mumkin.`,
+    );
     console.error(`Ochib ko'ring: http://localhost:${PORT}`);
     console.error("");
     console.error("Qayta ishga tushirish uchun:");
