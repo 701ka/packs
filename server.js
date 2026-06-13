@@ -169,7 +169,7 @@ function createDefaultDb() {
     role: "admin",
     created_at: new Date().toISOString(),
   };
-  return { users: [admin], packs: defaultPacks(), subscribers: [], scans: [] };
+  return { users: [admin], packs: defaultPacks(), subscribers: [], scans: [], reviews: [] };
 }
 
 async function getMongoStateCollection() {
@@ -634,13 +634,17 @@ function withUploader(pack, db) {
 }
 
 function publicPack(pack, db) {
-  const { download_url, uploader_email, uploaded_by, ...safe } = withUploader(
-    pack,
-    db,
-  );
+  const { download_url, uploader_email, uploaded_by, ...safe } = withUploader(pack, db);
+  const reviews = (db.reviews || []).filter((r) => r.pack_id === pack.id);
+  const avg_rating = reviews.length
+    ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10
+    : 0;
   return {
     ...safe,
     has_download: Boolean(download_url),
+    downloads: pack.downloads || 0,
+    avg_rating,
+    review_count: reviews.length,
   };
 }
 
@@ -806,6 +810,8 @@ async function handleApi(req, res, url) {
     if (!canDownloadPack(user, pack)) {
       return send(res, 403, { error: "Bu packni yuklab olishga ruxsat yo'q" });
     }
+    pack.downloads = (pack.downloads || 0) + 1;
+    writeDb(db).catch(() => {});
     return sendFileDownload(res, pack);
   }
 
@@ -1102,6 +1108,104 @@ async function handleApi(req, res, url) {
         error: aiData.error?.message || "AI xatolik",
       });
     return send(res, 200, { text: aiData.content?.[0]?.text || "" });
+  }
+
+  if (
+    method === "GET" &&
+    parts.length === 3 &&
+    parts[0] === "packs" &&
+    parts[2] === "reviews"
+  ) {
+    const pack = db.packs.find(
+      (p) => p.id === Number(parts[1]) && p.status === "live",
+    );
+    if (!pack) return notFound(res);
+    const reviews = (db.reviews || [])
+      .filter((r) => r.pack_id === Number(parts[1]))
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return send(res, 200, reviews);
+  }
+
+  if (
+    method === "POST" &&
+    parts.length === 3 &&
+    parts[0] === "packs" &&
+    parts[2] === "reviews"
+  ) {
+    const user = requireUser(req, res, db);
+    if (!user) return;
+    const pack = db.packs.find(
+      (p) => p.id === Number(parts[1]) && p.status === "live",
+    );
+    if (!pack) return notFound(res);
+    const body = await parseBody(req);
+    const rating = Number(body.rating);
+    if (!rating || rating < 1 || rating > 5)
+      return send(res, 400, { error: "Reyting 1-5 orasida bo'lishi kerak" });
+    const comment = String(body.comment || "").trim().slice(0, 500);
+    db.reviews = db.reviews || [];
+    const existing = db.reviews.find(
+      (r) => r.pack_id === pack.id && r.user_id === user.id,
+    );
+    if (existing) {
+      existing.rating = rating;
+      existing.comment = comment;
+      existing.updated_at = new Date().toISOString();
+      await writeDb(db);
+      return send(res, 200, existing);
+    }
+    const review = {
+      id: Date.now(),
+      pack_id: pack.id,
+      user_id: user.id,
+      user_name: user.name,
+      rating,
+      comment,
+      created_at: new Date().toISOString(),
+    };
+    db.reviews.push(review);
+    await writeDb(db);
+    return send(res, 201, review);
+  }
+
+  if (method === "DELETE" && parts.length === 2 && parts[0] === "reviews") {
+    const user = requireUser(req, res, db);
+    if (!user) return;
+    db.reviews = db.reviews || [];
+    const review = db.reviews.find((r) => r.id === Number(parts[1]));
+    if (!review) return notFound(res);
+    if (user.role !== "admin" && review.user_id !== user.id)
+      return send(res, 403, { error: "Ruxsat yo'q" });
+    db.reviews = db.reviews.filter((r) => r.id !== Number(parts[1]));
+    await writeDb(db);
+    return send(res, 200, { ok: true });
+  }
+
+  if (method === "PUT" && parts.join("/") === "users/me") {
+    const user = requireUser(req, res, db);
+    if (!user) return;
+    const body = await parseBody(req);
+    if (body.name !== undefined) {
+      const name = String(body.name || "").trim().slice(0, 80);
+      if (!name) return send(res, 400, { error: "Ism bo'sh bo'lmasin" });
+      user.name = name;
+      (db.reviews || []).forEach((r) => {
+        if (r.user_id === user.id) r.user_name = name;
+      });
+    }
+    if (body.avatar !== undefined) {
+      const av = String(body.avatar || "").trim();
+      if (
+        av &&
+        !av.startsWith("data:image/") &&
+        !av.startsWith("https://") &&
+        !av.startsWith("http://")
+      )
+        return send(res, 400, { error: "Avatar noto'g'ri format" });
+      user.avatar = av;
+    }
+    await writeDb(db);
+    return send(res, 200, publicUser(user));
   }
 
   if (method === "POST" && parts[0] === "newsletter") {

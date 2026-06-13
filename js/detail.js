@@ -8,11 +8,19 @@ function getToken() {
   return localStorage.getItem("token");
 }
 
-function renderStars(rating) {
+function renderStars(rating, interactive = false, onRate = null) {
+  if (interactive) {
+    return [1, 2, 3, 4, 5]
+      .map(
+        (i) =>
+          `<span class="star-btn ${i <= rating ? "filled" : ""}" data-v="${i}" onclick="(${onRate})(${i})">${i <= rating ? "★" : "☆"}</span>`,
+      )
+      .join("");
+  }
   const full = Math.floor(rating);
   const half = rating % 1 >= 0.5 ? 1 : 0;
   const empty = 5 - full - half;
-  return "★".repeat(full) + (half ? "½" : "") + "☆".repeat(empty);
+  return "★".repeat(full) + (half ? "★" : "") + "☆".repeat(empty);
 }
 
 function renderNavUser() {
@@ -72,7 +80,9 @@ document.addEventListener("click", (e) => {
 
 // ===== CURRENT PACK =====
 let currentPack = null;
+let currentReviews = [];
 let selectedPayMethod = null;
+let myRating = 0;
 
 async function loadDetail() {
   const params = new URLSearchParams(window.location.search);
@@ -92,17 +102,21 @@ async function loadDetail() {
   }
 
   try {
-    const res = await fetch(`${API}/packs/${id}`);
-    if (!res.ok) throw new Error("Pack topilmadi");
-    currentPack = await res.json();
+    const [packRes, reviewsRes] = await Promise.all([
+      fetch(`${API}/packs/${id}`),
+      fetch(`${API}/packs/${id}/reviews`),
+    ]);
+    if (!packRes.ok) throw new Error("Pack topilmadi");
+    currentPack = await packRes.json();
+    currentReviews = reviewsRes.ok ? await reviewsRes.json() : [];
 
-    // Download mode: to'g'ridan-to'g'ri download sahifasi
     if (mode === "download") {
       renderDownloadPage(currentPack);
       return;
     }
 
     renderDetailPage(currentPack);
+    renderReviews(currentReviews);
     loadSimilar(id);
   } catch (err) {
     document.getElementById("detailPage").innerHTML =
@@ -112,8 +126,8 @@ async function loadDetail() {
 
 function renderDetailPage(p) {
   const isFree = p.price === "Free" || p.price === "$0" || !p.price;
-  const rating = p.rating || 4.5;
-  const reviews = p.reviews || 50;
+  const rating = p.avg_rating || 0;
+  const reviews = p.review_count || 0;
   const apps = Array.isArray(p.apps) ? p.apps : JSON.parse(p.apps || "[]");
   const params = new URLSearchParams(window.location.search);
   const scannerEffects = params.get("from") === "scanner" ? params.get("effects") || "" : "";
@@ -153,9 +167,9 @@ function renderDetailPage(p) {
         ${scannerBadge}
 
         <div class="detail-rating">
-          <span class="stars">${renderStars(rating)}</span>
-          <span class="rating-num">${rating}</span>
-          <span class="rating-reviews">(${reviews} reviews)</span>
+          <span class="stars">${rating ? renderStars(rating) : "☆☆☆☆☆"}</span>
+          ${rating ? `<span class="rating-num">${rating}</span>` : ""}
+          <span class="rating-reviews">${reviews ? `(${reviews} sharh)` : "Hali sharh yo'q"}</span>
         </div>
 
         <div class="detail-desc">${p.desc || "Tavsif yo'q."}</div>
@@ -206,6 +220,9 @@ function renderDetailPage(p) {
       </div>
 
     </div>
+
+    <!-- REVIEWS -->
+    <div class="reviews-section" id="reviewsSection"></div>
 
     <!-- SIMILAR -->
     <div class="similar-section" id="similarSection"></div>
@@ -261,6 +278,106 @@ async function downloadCurrentPack() {
       btnText: "OK",
     });
   }
+}
+
+// ===== REVIEWS =====
+function renderReviews(reviews) {
+  const section = document.getElementById("reviewsSection");
+  if (!section) return;
+  const user = getUser();
+  const myReview = reviews.find((r) => r.user_id === user?.id);
+  if (myReview) myRating = myReview.rating;
+
+  const starsHtml = (r) =>
+    "★".repeat(r) + "☆".repeat(5 - r);
+
+  const reviewCards = reviews
+    .map(
+      (r) => `
+    <div class="review-card" data-id="${r.id}">
+      <div class="review-top">
+        <div class="review-avatar">${r.user_name?.[0]?.toUpperCase() || "?"}</div>
+        <div class="review-meta">
+          <div class="review-name">${r.user_name || "Foydalanuvchi"}</div>
+          <div class="review-stars">${starsHtml(r.rating)}</div>
+        </div>
+        ${user && (user.id === r.user_id || user.role === "admin") ? `<button class="review-delete" onclick="deleteReview(${r.id})">✕</button>` : ""}
+      </div>
+      ${r.comment ? `<div class="review-comment">${r.comment}</div>` : ""}
+    </div>`,
+    )
+    .join("");
+
+  const writeForm = user
+    ? `<div class="review-form">
+        <div class="review-form-title">${myReview ? "Sharhingizni tahrirlash" : "Sharh yozish"}</div>
+        <div class="review-stars-pick" id="starPicker">
+          ${[1, 2, 3, 4, 5].map((i) => `<span class="star-pick ${i <= myRating ? "on" : ""}" onclick="setMyRating(${i})">${i <= myRating ? "★" : "☆"}</span>`).join("")}
+        </div>
+        <textarea id="reviewComment" class="review-textarea" placeholder="Fikringizni yozing (ixtiyoriy)..." maxlength="500">${myReview?.comment || ""}</textarea>
+        <button class="review-submit-btn" onclick="submitReview()">Yuborish</button>
+      </div>`
+    : `<div class="review-login-hint"><a href="/pages/login.html">Kirish</a> qilib sharh yozing</div>`;
+
+  section.innerHTML = `
+    <div class="reviews-title">Sharhlar ${reviews.length ? `(${reviews.length})` : ""}</div>
+    ${writeForm}
+    <div id="reviewCards">${reviewCards || '<div class="reviews-empty">Hali sharh yo\'q. Birinchi bo\'ling!</div>'}</div>
+  `;
+}
+
+function setMyRating(val) {
+  myRating = val;
+  document.querySelectorAll(".star-pick").forEach((s, i) => {
+    s.textContent = i < val ? "★" : "☆";
+    s.classList.toggle("on", i < val);
+  });
+}
+
+async function submitReview() {
+  if (!myRating) return notify("Avval yulduzcha tanlang", "warn");
+  const comment = document.getElementById("reviewComment")?.value.trim() || "";
+  try {
+    const res = await fetch(`${API}/packs/${currentPack.id}/reviews`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + getToken(),
+      },
+      body: JSON.stringify({ rating: myRating, comment }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || "Xatolik");
+    currentReviews = await (await fetch(`${API}/packs/${currentPack.id}/reviews`)).json();
+    // Refresh pack to update avg_rating
+    const p = await (await fetch(`${API}/packs/${currentPack.id}`)).json();
+    document.querySelector(".detail-rating").innerHTML = `
+      <span class="stars">${p.avg_rating ? "★".repeat(Math.round(p.avg_rating)) + "☆".repeat(5 - Math.round(p.avg_rating)) : "☆☆☆☆☆"}</span>
+      ${p.avg_rating ? `<span class="rating-num">${p.avg_rating}</span>` : ""}
+      <span class="rating-reviews">${p.review_count ? `(${p.review_count} sharh)` : "Hali sharh yo'q"}</span>`;
+    renderReviews(currentReviews);
+    notify("Sharh qabul qilindi", "success");
+  } catch (err) {
+    notify(err.message, "error");
+  }
+}
+
+async function deleteReview(id) {
+  try {
+    const res = await fetch(`${API}/reviews/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    if (!res.ok) throw new Error((await res.json()).error || "Xatolik");
+    currentReviews = currentReviews.filter((r) => r.id !== id);
+    renderReviews(currentReviews);
+  } catch (err) {
+    notify(err.message, "error");
+  }
+}
+
+function notify(msg, type = "info") {
+  if (typeof showToast === "function") showToast(msg, type);
+  else alert(msg);
 }
 
 // ===== SIMILAR PACKS =====

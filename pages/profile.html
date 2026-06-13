@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profil - EditorPack</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../style/style.css" />
+    <link rel="stylesheet" href="../style/notify.css" />
+    <link rel="stylesheet" href="../style/profile.css" />
+  </head>
+  <body>
+    <nav class="nav">
+      <a href="/" class="nav-logo">EditorPack</a>
+      <div class="nav-links">
+        <a href="/pages/packs.html" class="nav-link">Packlar</a>
+        <div class="nav-user" id="navUser"></div>
+      </div>
+    </nav>
+
+    <div class="profile-page">
+      <!-- LEFT PANEL -->
+      <div class="profile-left">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar-ring">
+            <div class="profile-avatar" id="profileAvatar">?</div>
+          </div>
+          <label class="profile-avatar-btn" title="Rasm o'zgartirish">
+            📷
+            <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarFile(this)" />
+          </label>
+        </div>
+
+        <div class="profile-identity">
+          <div class="profile-name" id="profileName">Yuklanmoqda...</div>
+          <div class="profile-email" id="profileEmail"></div>
+          <div class="profile-role-badge" id="profileRoleBadge"></div>
+          <div class="profile-since" id="profileSince"></div>
+        </div>
+
+        <div class="profile-edit-box">
+          <div class="profile-edit-label">Ismni o'zgartirish</div>
+          <input id="editName" class="profile-edit-input" placeholder="Yangi ismingiz" />
+          <button class="profile-save-btn" onclick="saveProfile()">Saqlash</button>
+        </div>
+
+        <div class="profile-stats">
+          <div class="profile-stat">
+            <div class="profile-stat-num" id="statPacks">—</div>
+            <div class="profile-stat-label">Packlar</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-num" id="statDownloads">—</div>
+            <div class="profile-stat-label">Yuklanishlar</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-num" id="statReviews">—</div>
+            <div class="profile-stat-label">Sharhlar</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL -->
+      <div class="profile-right">
+        <!-- My Packs -->
+        <div class="profile-section" id="myPacksSection">
+          <div class="profile-section-title">Mening packlarim</div>
+          <div id="myPacksList"><div class="profile-loading">Yuklanmoqda...</div></div>
+        </div>
+
+        <!-- Top Downloaded -->
+        <div class="profile-section">
+          <div class="profile-section-title">Eng ko'p yuklangan packlar</div>
+          <div id="topPacksList"><div class="profile-loading">Yuklanmoqda...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/notify.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/nav.js"></script>
+    <script src="../js/profile.js"></script>
+  </body>
+</html>
