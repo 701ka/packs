@@ -350,15 +350,181 @@ function handleImgUpload(input) {
     return;
   }
   const reader = new FileReader();
-  reader.onload = (e) => {
-    uploadedImgBase64 = e.target.result;
-    document.getElementById("imgUploadArea").style.display = "none";
-    document.getElementById("imgPreviewWrap").style.display = "flex";
-    document.getElementById("imgPreviewSmall").src = uploadedImgBase64;
-    updatePreview();
-  };
+  reader.onload = (e) => openCropModal(e.target.result);
   reader.readAsDataURL(file);
 }
+
+// ===== IMAGE CROP =====
+const CROP_W = 480;
+const CROP_H = 270;
+let cropState = { src: null, natW: 0, natH: 0, baseScale: 1, x: 0, y: 0, dragging: false, sx: 0, sy: 0 };
+
+function openCropModal(src) {
+  cropState.src = src;
+  cropState.x = 0;
+  cropState.y = 0;
+  const modal = document.getElementById("imgCropModal");
+  const img = document.getElementById("cropImg");
+  document.getElementById("cropZoom").value = 100;
+  document.getElementById("cropZoomVal").textContent = "1×";
+  img.src = src;
+  img.onload = () => {
+    cropState.natW = img.naturalWidth;
+    cropState.natH = img.naturalHeight;
+    const frameEl = document.getElementById("cropFrame");
+    const fw = frameEl.clientWidth || CROP_W;
+    const fh = frameEl.clientHeight || CROP_H;
+    cropState.baseScale = Math.max(fw / cropState.natW, fh / cropState.natH);
+    cropState.fw = fw;
+    cropState.fh = fh;
+    _applyCropTransform();
+  };
+  modal.style.display = "flex";
+}
+
+function closeCropModal() {
+  document.getElementById("imgCropModal").style.display = "none";
+}
+
+function onCropZoom() {
+  const val = Number(document.getElementById("cropZoom").value);
+  document.getElementById("cropZoomVal").textContent = (val / 100).toFixed(1) + "×";
+  _applyCropTransform();
+}
+
+function _applyCropTransform() {
+  const zoom = Number(document.getElementById("cropZoom").value) / 100;
+  const s = cropState.baseScale * zoom;
+  const fw = cropState.fw || CROP_W;
+  const fh = cropState.fh || CROP_H;
+  const dispW = cropState.natW * s;
+  const dispH = cropState.natH * s;
+  const left = (fw - dispW) / 2 + cropState.x;
+  const top = (fh - dispH) / 2 + cropState.y;
+  const img = document.getElementById("cropImg");
+  img.style.width = dispW + "px";
+  img.style.height = dispH + "px";
+  img.style.left = left + "px";
+  img.style.top = top + "px";
+}
+
+function applyCrop() {
+  const zoom = Number(document.getElementById("cropZoom").value) / 100;
+  const s = cropState.baseScale * zoom;
+  const fw = cropState.fw || CROP_W;
+  const fh = cropState.fh || CROP_H;
+  const dispW = cropState.natW * s;
+  const dispH = cropState.natH * s;
+  const left = (fw - dispW) / 2 + cropState.x;
+  const top = (fh - dispH) / 2 + cropState.y;
+  const sx = -left / s;
+  const sy = -top / s;
+  const sw = fw / s;
+  const sh = fh / s;
+  const canvas = document.createElement("canvas");
+  canvas.width = fw;
+  canvas.height = fh;
+  const ctx = canvas.getContext("2d");
+  const img = document.getElementById("cropImg");
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, fw, fh);
+  uploadedImgBase64 = canvas.toDataURL("image/jpeg", 0.92);
+  document.getElementById("imgUploadArea").style.display = "none";
+  document.getElementById("imgPreviewWrap").style.display = "flex";
+  document.getElementById("imgPreviewSmall").src = uploadedImgBase64;
+  updatePreview();
+  closeCropModal();
+}
+
+// Crop frame drag (mouse)
+document.addEventListener("DOMContentLoaded", () => {
+  const frame = document.getElementById("cropFrame");
+
+  frame.addEventListener("mousedown", (e) => {
+    cropState.dragging = true;
+    cropState.sx = e.clientX - cropState.x;
+    cropState.sy = e.clientY - cropState.y;
+    frame.classList.add("grabbing");
+    e.preventDefault();
+  });
+  document.addEventListener("mousemove", (e) => {
+    if (!cropState.dragging) return;
+    cropState.x = e.clientX - cropState.sx;
+    cropState.y = e.clientY - cropState.sy;
+    _applyCropTransform();
+  });
+  document.addEventListener("mouseup", () => {
+    cropState.dragging = false;
+    document.getElementById("cropFrame")?.classList.remove("grabbing");
+  });
+
+  // Touch support
+  frame.addEventListener("touchstart", (e) => {
+    const t = e.touches[0];
+    cropState.dragging = true;
+    cropState.sx = t.clientX - cropState.x;
+    cropState.sy = t.clientY - cropState.y;
+  }, { passive: true });
+  document.addEventListener("touchmove", (e) => {
+    if (!cropState.dragging) return;
+    const t = e.touches[0];
+    cropState.x = t.clientX - cropState.sx;
+    cropState.y = t.clientY - cropState.sy;
+    _applyCropTransform();
+  }, { passive: true });
+  document.addEventListener("touchend", () => { cropState.dragging = false; });
+
+  // ===== DRAG & DROP =====
+  const packFileArea = document.getElementById("packFileArea");
+  packFileArea.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    packFileArea.classList.add("drag-over");
+  });
+  packFileArea.addEventListener("dragleave", (e) => {
+    if (!packFileArea.contains(e.relatedTarget)) packFileArea.classList.remove("drag-over");
+  });
+  packFileArea.addEventListener("drop", (e) => {
+    e.preventDefault();
+    packFileArea.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const ext = getFileExtension(file.name);
+    if (!ALLOWED_PACK_EXTENSIONS.has(ext)) {
+      showToast("Bu fayl turi qabul qilinmaydi.", "warning");
+      return;
+    }
+    if (file.size > MAX_PACK_FILE_SIZE) {
+      showToast("Pack fayli 250MB dan katta bo'lmasin!", "warning");
+      return;
+    }
+    selectedPackFile = file;
+    setPackFilePreview(file.name, file.size);
+  });
+
+  const imgUploadArea = document.getElementById("imgUploadArea");
+  imgUploadArea.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    imgUploadArea.classList.add("drag-over");
+  });
+  imgUploadArea.addEventListener("dragleave", (e) => {
+    if (!imgUploadArea.contains(e.relatedTarget)) imgUploadArea.classList.remove("drag-over");
+  });
+  imgUploadArea.addEventListener("drop", (e) => {
+    e.preventDefault();
+    imgUploadArea.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.type.startsWith("image/")) {
+      showToast("Faqat rasm fayli qabul qilinadi.", "warning");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Rasm 5MB dan katta bo'lmasin!", "warning");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => openCropModal(ev.target.result);
+    reader.readAsDataURL(file);
+  });
+});
 
 function removeImg() {
   uploadedImgBase64 = null;
@@ -532,6 +698,10 @@ async function submitPack() {
       form.append(key, Array.isArray(value) ? JSON.stringify(value) : value);
     });
     if (selectedPackFile) form.append("pack_file", selectedPackFile);
+    if (uploadedImgBase64 && uploadedImgBase64.startsWith("data:")) {
+      const blob = await (await fetch(uploadedImgBase64)).blob();
+      form.append("cover_image", blob, "cover.jpg");
+    }
 
     if (editingId) {
       const res = await fetch(`${API}/uploader/packs/${editingId}`, {

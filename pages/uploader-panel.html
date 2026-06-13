@@ -179,7 +179,7 @@
                 onclick="document.getElementById('imgFile').click()"
               >
                 <div class="img-upload-icon">🖼️</div>
-                <div class="img-upload-text">Rasm yuklash uchun bosing</div>
+                <div class="img-upload-text">Bosing yoki bu yerga tashlang</div>
                 <div class="img-upload-sub">PNG, JPG, WEBP - max 5MB</div>
                 <input
                   type="file"
@@ -210,7 +210,7 @@
               >
                 <div class="file-upload-icon">FILE</div>
                 <div class="file-upload-text" id="packFileText">
-                  Fayl yoki video yuklash uchun bosing
+                  Bosing yoki bu yerga tashlang
                 </div>
                 <div class="file-upload-sub">
                   ZIP/RAR/7Z, CapCut/AE/Premiere presetlari, MP4/MOV/WEBM - max 250MB
@@ -345,5 +345,28 @@
     <script src="../js/nav.js"></script>
     <script src="../js/ai.js"></script>
     <script src="../js/uploader-panel.js"></script>
+  <!-- Image Crop Modal -->
+  <div id="imgCropModal" class="img-crop-modal" style="display:none">
+    <div class="img-crop-container">
+      <div class="img-crop-header">
+        <span class="img-crop-title">Rasmni sozlash</span>
+        <button class="img-crop-close" onclick="closeCropModal()">✕</button>
+      </div>
+      <div class="img-crop-frame" id="cropFrame">
+        <img id="cropImg" draggable="false" alt="" />
+      </div>
+      <div class="img-crop-controls">
+        <span class="img-crop-zoom-label">Zoom</span>
+        <input type="range" id="cropZoom" min="100" max="300" value="100" oninput="onCropZoom()" />
+        <span class="img-crop-zoom-val" id="cropZoomVal">1×</span>
+      </div>
+      <div class="img-crop-hint">Rasmni suring yoki zoom qiling</div>
+      <div class="img-crop-actions">
+        <button class="img-crop-cancel" onclick="closeCropModal()">Bekor</button>
+        <button class="img-crop-confirm" onclick="applyCrop()">Tasdiqlash</button>
+      </div>
+    </div>
+  </div>
+
   </body>
 </html>
