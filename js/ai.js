@@ -31,18 +31,18 @@ Quyidagi talablar asosida o'zbek tilida 2-3 jumlali qisqa va jozibador tavsif yo
 4. Kimga mos ekanini ayting
 5. Faqat tavsif matni, boshqa hech narsa yo'q`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch(`${window.API_BASE || "/api"}/ai/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        messages: [{ role: "user", content: prompt }],
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + (localStorage.getItem("token") || ""),
+      },
+      body: JSON.stringify({ prompt }),
     });
 
     const data = await response.json();
-    const text = data.content?.[0]?.text || "";
+    if (!response.ok) throw new Error(data.error || "API xatolik");
+    const text = data.text || "";
 
     if (text) {
       descEl.value = text.trim();

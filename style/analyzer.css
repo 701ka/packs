@@ -49,7 +49,9 @@
   justify-content: center;
   gap: 10px;
   text-align: center;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 
 .upload-zone:hover,
@@ -314,7 +316,11 @@
 }
 
 .pro-analysis {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(14, 165, 233, 0.07));
+  background: linear-gradient(
+    135deg,
+    rgba(124, 58, 237, 0.1),
+    rgba(14, 165, 233, 0.07)
+  );
   border: 1px solid rgba(192, 132, 252, 0.2);
   border-radius: 8px;
   padding: 12px;
@@ -340,7 +346,10 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    transform 0.15s;
 }
 
 .timeline-button:hover,
@@ -380,7 +389,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(14, 165, 233, 0.08));
+  background: linear-gradient(
+    135deg,
+    rgba(124, 58, 237, 0.12),
+    rgba(14, 165, 233, 0.08)
+  );
   border: 1px solid rgba(192, 132, 252, 0.24);
   border-radius: 8px;
   padding: 12px;
@@ -723,7 +736,9 @@
     height: 2px;
     border-radius: 999px;
     background: currentColor;
-    transition: transform 0.18s, opacity 0.18s;
+    transition:
+      transform 0.18s,
+      opacity 0.18s;
   }
 
   .nav-menu-btn span:nth-child(1) {

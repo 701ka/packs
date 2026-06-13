@@ -268,7 +268,7 @@ async function loadSimilar(currentId) {
   try {
     const res = await fetch(`${API}/packs`);
     const all = await res.json();
-    const similar = all.filter((x) => x.id != currentId).slice(0, 4);
+    const similar = all.filter((x) => x.id !== Number(currentId)).slice(0, 4);
 
     const section = document.getElementById("similarSection");
     if (!section || !similar.length) return;

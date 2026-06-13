@@ -585,7 +585,7 @@ async function deletePack(id) {
           headers: { Authorization: "Bearer " + getToken() },
         });
         if (!res.ok) throw new Error();
-        myPacks = myPacks.filter((x) => x.id != id);
+        myPacks = myPacks.filter((x) => x.id !== id);
         updateStats();
         renderMyPacks();
         showToast("Pack o'chirildi.", "success");

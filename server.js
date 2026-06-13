@@ -182,7 +182,7 @@ async function getMongoStateCollection() {
 
 function useMemoryDb(reason) {
   mongoDisabledReason = reason || "MongoDB ulanmadi";
-  if (!memoryDb) memoryDb = createDefaultDb();
+  if (!memoryDb && isEphemeralServer()) memoryDb = createDefaultDb();
   console.error(`MongoDB disabled: ${mongoDisabledReason}`);
 }
 
@@ -207,7 +207,7 @@ async function seedDb() {
       }
     } catch (err) {
       useMemoryDb(err.message);
-      return;
+      // MongoDB failed — fall through to file-based seed below (non-Vercel)
     }
   }
 
@@ -563,8 +563,7 @@ function canDownloadPack(user, pack) {
   if (!user || !pack) return false;
   if (user.role === "admin") return true;
   if (pack.uploaded_by === user.id) return true;
-  const isFree = !pack.price || pack.price === "Free" || pack.price === "$0";
-  return pack.status === "live" && isFree;
+  return pack.status === "live";
 }
 
 function sendFileDownload(res, pack) {
@@ -682,7 +681,7 @@ async function handleApi(req, res, url) {
   if (method === "GET" && parts.length === 3 && parts[0] === "packs" && parts[2] === "download") {
     const user = requireUser(req, res, db);
     if (!user) return;
-    const pack = db.packs.find((p) => p.id == parts[1]);
+    const pack = db.packs.find((p) => p.id === Number(parts[1]));
     if (!pack) return notFound(res);
     if (!canDownloadPack(user, pack)) {
       return send(res, 403, { error: "Bu packni yuklab olishga ruxsat yo'q" });
@@ -691,7 +690,7 @@ async function handleApi(req, res, url) {
   }
 
   if (method === "GET" && parts.length === 2 && parts[0] === "packs") {
-    const pack = db.packs.find((p) => p.id == parts[1] && p.status === "live");
+    const pack = db.packs.find((p) => p.id === Number(parts[1]) && p.status === "live");
     if (!pack) return notFound(res);
     return send(res, 200, publicPack(pack, db));
   }
@@ -781,7 +780,7 @@ async function handleApi(req, res, url) {
   if (method === "PUT" && parts.length === 3 && parts[0] === "uploader" && parts[1] === "packs") {
     const user = requireUser(req, res, db);
     if (!user) return;
-    const pack = db.packs.find((p) => p.id == parts[2]);
+    const pack = db.packs.find((p) => p.id === Number(parts[2]));
     if (!pack) return notFound(res);
     if (user.role !== "admin" && pack.uploaded_by !== user.id) {
       return send(res, 403, { error: "Ruxsat yo'q" });
@@ -811,12 +810,12 @@ async function handleApi(req, res, url) {
   if (method === "DELETE" && parts.length === 3 && parts[0] === "uploader" && parts[1] === "packs") {
     const user = requireUser(req, res, db);
     if (!user) return;
-    const pack = db.packs.find((p) => p.id == parts[2]);
+    const pack = db.packs.find((p) => p.id === Number(parts[2]));
     if (!pack) return notFound(res);
     if (user.role !== "admin" && pack.uploaded_by !== user.id) {
       return send(res, 403, { error: "Ruxsat yo'q" });
     }
-    db.packs = db.packs.filter((p) => p.id != parts[2]);
+    db.packs = db.packs.filter((p) => p.id !== Number(parts[2]));
     await writeDb(db);
     return send(res, 200, { ok: true });
   }
@@ -829,7 +828,7 @@ async function handleApi(req, res, url) {
   if (method === "PUT" && parts.length === 4 && parts[0] === "admin" && parts[1] === "users" && parts[3] === "role") {
     if (!requireAdmin(req, res, db)) return;
     const body = await parseBody(req);
-    const user = db.users.find((u) => u.id == parts[2]);
+    const user = db.users.find((u) => u.id === Number(parts[2]));
     if (!user) return notFound(res);
     if (user.email === ADMIN_EMAIL) return send(res, 400, { error: "Asosiy admin himoyalangan" });
     if (!["user", "uploader", "admin"].includes(body.role)) {
@@ -842,12 +841,12 @@ async function handleApi(req, res, url) {
 
   if (method === "DELETE" && parts.length === 3 && parts[0] === "admin" && parts[1] === "users") {
     if (!requireAdmin(req, res, db)) return;
-    const user = db.users.find((u) => u.id == parts[2]);
+    const user = db.users.find((u) => u.id === Number(parts[2]));
     if (!user) return notFound(res);
     if (user.email === ADMIN_EMAIL) return send(res, 400, { error: "Asosiy admin himoyalangan" });
-    db.users = db.users.filter((u) => u.id != parts[2]);
-    db.packs = db.packs.filter((p) => p.uploaded_by != parts[2]);
-    db.scans = (db.scans || []).filter((scan) => scan.user_id != parts[2]);
+    db.users = db.users.filter((u) => u.id !== Number(parts[2]));
+    db.packs = db.packs.filter((p) => p.uploaded_by !== Number(parts[2]));
+    db.scans = (db.scans || []).filter((scan) => scan.user_id !== Number(parts[2]));
     await writeDb(db);
     return send(res, 200, { ok: true });
   }
@@ -860,7 +859,7 @@ async function handleApi(req, res, url) {
   if (method === "PUT" && parts.length === 4 && parts[0] === "admin" && parts[1] === "packs" && parts[3] === "status") {
     if (!requireAdmin(req, res, db)) return;
     const body = await parseBody(req);
-    const pack = db.packs.find((p) => p.id == parts[2]);
+    const pack = db.packs.find((p) => p.id === Number(parts[2]));
     if (!pack) return notFound(res);
     if (!["pending", "live", "rejected"].includes(body.status)) {
       return send(res, 400, { error: "Status noto'g'ri" });
@@ -873,7 +872,7 @@ async function handleApi(req, res, url) {
   if (method === "PUT" && parts.length === 3 && parts[0] === "admin" && parts[1] === "packs") {
     if (!requireAdmin(req, res, db)) return;
     const body = await parseBody(req);
-    const pack = db.packs.find((p) => p.id == parts[2]);
+    const pack = db.packs.find((p) => p.id === Number(parts[2]));
     if (!pack) return notFound(res);
     const updates = { ...body };
     if (body.img !== undefined) updates.img = normalizeImageUrl(body.img);
@@ -887,9 +886,37 @@ async function handleApi(req, res, url) {
 
   if (method === "DELETE" && parts.length === 3 && parts[0] === "admin" && parts[1] === "packs") {
     if (!requireAdmin(req, res, db)) return;
-    db.packs = db.packs.filter((p) => p.id != parts[2]);
+    db.packs = db.packs.filter((p) => p.id !== Number(parts[2]));
     await writeDb(db);
     return send(res, 200, { ok: true });
+  }
+
+  if (method === "POST" && parts.join("/") === "ai/generate") {
+    const user = requireUser(req, res, db);
+    if (!user) return;
+    const body = await parseBody(req);
+    const prompt = String(body.prompt || "").trim();
+    if (!prompt) return send(res, 400, { error: "Prompt kiritilmadi" });
+
+    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+    if (!ANTHROPIC_KEY) return send(res, 503, { error: "AI xizmati sozlanmagan" });
+
+    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 512,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const aiData = await aiRes.json();
+    if (!aiRes.ok) return send(res, aiRes.status, { error: aiData.error?.message || "AI xatolik" });
+    return send(res, 200, { text: aiData.content?.[0]?.text || "" });
   }
 
   if (method === "POST" && parts[0] === "newsletter") {

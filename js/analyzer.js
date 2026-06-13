@@ -316,8 +316,12 @@ async function analyzeAudio(file) {
   try {
     const buffer = await file.arrayBuffer();
     const audioCtx = new AudioCtx();
-    const decoded = await audioCtx.decodeAudioData(buffer.slice(0));
-    await audioCtx.close();
+    let decoded;
+    try {
+      decoded = await audioCtx.decodeAudioData(buffer.slice(0));
+    } finally {
+      audioCtx.close().catch(() => {});
+    }
     const channel = decoded.getChannelData(0);
     const sampleRate = decoded.sampleRate;
     const windowSize = Math.max(1024, Math.floor(sampleRate * 0.18));
