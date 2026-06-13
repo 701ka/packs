@@ -1,5 +1,14 @@
 ﻿const API = window.API_BASE || "/api";
 
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 function getUser() {
   return JSON.parse(localStorage.getItem("user") || "null");
 }
@@ -134,14 +143,14 @@ function renderDetailPage(p) {
   const scannerBadge = scannerEffects
     ? `<div class="scanner-match-box">
         <div class="scanner-match-title">Scanner tavsiyasi</div>
-        <div class="scanner-match-text">Bu pack videongizdagi ${scannerEffects} effektlariga mos deb topildi.</div>
+        <div class="scanner-match-text">Bu pack videongizdagi ${esc(scannerEffects)} effektlariga mos deb topildi.</div>
       </div>`
     : "";
 
-  document.title = p.name + " - EditorPack";
+  document.title = esc(p.name) + " - EditorPack";
 
   const badgeHtml = p.badge
-    ? `<span class="detail-badge-tag badge-${p.badge}">${p.badge}</span>`
+    ? `<span class="detail-badge-tag badge-${esc(p.badge)}">${esc(p.badge)}</span>`
     : "";
 
   document.getElementById("detailPage").innerHTML = `
@@ -160,10 +169,10 @@ function renderDetailPage(p) {
         ${badgeHtml}
 
         <div class="detail-tags">
-          ${apps.map((a) => `<span class="detail-tag">${a}</span>`).join("")}
+          ${apps.map((a) => `<span class="detail-tag">${esc(a)}</span>`).join("")}
         </div>
 
-        <div class="detail-name">${p.name}</div>
+        <div class="detail-name">${esc(p.name)}</div>
         ${scannerBadge}
 
         <div class="detail-rating">
@@ -172,7 +181,7 @@ function renderDetailPage(p) {
           <span class="rating-reviews">${reviews ? `(${reviews} sharh)` : "Hali sharh yo'q"}</span>
         </div>
 
-        <div class="detail-desc">${p.desc || "Tavsif yo'q."}</div>
+        <div class="detail-desc">${esc(p.desc) || "Tavsif yo'q."}</div>
       </div>
 
       <!-- RIGHT -->
@@ -296,14 +305,14 @@ function renderReviews(reviews) {
       (r) => `
     <div class="review-card" data-id="${r.id}">
       <div class="review-top">
-        <div class="review-avatar">${r.user_name?.[0]?.toUpperCase() || "?"}</div>
+        <div class="review-avatar">${esc(r.user_name?.[0]?.toUpperCase() || "?")}</div>
         <div class="review-meta">
-          <div class="review-name">${r.user_name || "Foydalanuvchi"}</div>
+          <div class="review-name">${esc(r.user_name || "Foydalanuvchi")}</div>
           <div class="review-stars">${starsHtml(r.rating)}</div>
         </div>
-        ${user && (user.id === r.user_id || user.role === "admin") ? `<button class="review-delete" onclick="deleteReview(${r.id})">✕</button>` : ""}
+        ${user && (user.id === r.user_id || user.role === "admin") ? `<button class="review-delete" onclick="deleteReview(${Number(r.id)})">✕</button>` : ""}
       </div>
-      ${r.comment ? `<div class="review-comment">${r.comment}</div>` : ""}
+      ${r.comment ? `<div class="review-comment">${esc(r.comment)}</div>` : ""}
     </div>`,
     )
     .join("");
@@ -404,8 +413,8 @@ async function loadSimilar(currentId) {
                   : `<div class="similar-img-placeholder">PACK</div>`
               }
               <div class="similar-info">
-                <div class="similar-name">${s.name}</div>
-                <div class="similar-price ${sFree ? "free" : ""}">${sFree ? "Free" : s.price}</div>
+                <div class="similar-name">${esc(s.name)}</div>
+                <div class="similar-price ${sFree ? "free" : ""}">${sFree ? "Free" : esc(s.price)}</div>
               </div>
             </div>`;
           })

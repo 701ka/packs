@@ -3,6 +3,10 @@
    Shared nav component
    =========================== */
 
+function _esc(s) {
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
 function _navAvatarHtml(user) {
   const ini = user.name
     ? user.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
@@ -31,8 +35,8 @@ function renderNavUser() {
         <div class="dropdown-header">
           ${avatarHtml.replace('class="avatar-circle', 'class="dropdown-avatar avatar-circle')}
           <div>
-            <div class="dropdown-name">${user.name}</div>
-            <div class="dropdown-email">${user.email}</div>
+            <div class="dropdown-name">${_esc(user.name)}</div>
+            <div class="dropdown-email">${_esc(user.email)}</div>
           </div>
         </div>
         <div class="dropdown-divider"></div>

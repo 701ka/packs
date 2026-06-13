@@ -7,6 +7,10 @@ function getToken() {
   return localStorage.getItem("token");
 }
 
+function esc(s) {
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
 function starsHtml(r) {
   return "★".repeat(Math.round(r)) + "☆".repeat(5 - Math.round(r));
 }
@@ -123,14 +127,14 @@ function renderMyPacks(packs) {
     <div class="profile-pack-row" onclick="window.location.href='/pages/detail.html?id=${p.id}'">
       ${p.img ? `<img class="profile-pack-img" src="${p.img}" alt="${p.name}" />` : `<div class="profile-pack-img-ph">PACK</div>`}
       <div class="profile-pack-info">
-        <div class="profile-pack-name">${p.name}</div>
+        <div class="profile-pack-name">${esc(p.name)}</div>
         <div class="profile-pack-meta">
-          <span class="status-badge status-${p.status}">${p.status}</span>
+          <span class="status-badge status-${esc(p.status)}">${esc(p.status)}</span>
           <span>${p.downloads || 0} yuklanish</span>
           ${p.avg_rating ? `<span>${starsHtml(p.avg_rating)} ${p.avg_rating}</span>` : ""}
         </div>
       </div>
-      <div class="profile-pack-price ${p.price === "Free" ? "free" : ""}">${p.price || "Free"}</div>
+      <div class="profile-pack-price ${p.price === "Free" ? "free" : ""}">${esc(p.price || "Free")}</div>
     </div>`,
     )
     .join("");
@@ -150,7 +154,7 @@ function renderTopPacks(packs) {
       <div class="top-pack-rank">#${i + 1}</div>
       ${p.img ? `<img class="profile-pack-img" src="${p.img}" alt="${p.name}" />` : `<div class="profile-pack-img-ph">PACK</div>`}
       <div class="profile-pack-info">
-        <div class="profile-pack-name">${p.name}</div>
+        <div class="profile-pack-name">${esc(p.name)}</div>
         <div class="profile-pack-meta">
           <span>${p.downloads} yuklanish</span>
           ${p.avg_rating ? `<span>${starsHtml(p.avg_rating)} ${p.avg_rating}</span>` : ""}

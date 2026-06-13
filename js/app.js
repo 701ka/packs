@@ -1,5 +1,11 @@
 const API = window.API_BASE || "/api";
 
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+}
+
 const GRAD_PAIRS = [
   ["#7c3aed", "#0ea5e9"],
   ["#db2777", "#7c3aed"],
@@ -70,8 +76,8 @@ function renderPackGrid(packs) {
         <div class="pack-app-tags">
           ${parseApps(p.apps).map((a) => `<span class="app-tag">${a}</span>`).join("")}
         </div>
-        <div class="pack-name">${p.name}</div>
-        <div class="pack-desc">${p.desc}</div>
+        <div class="pack-name">${esc(p.name)}</div>
+        <div class="pack-desc">${esc(p.desc)}</div>
         <div class="pack-footer">
           <span class="pack-price ${isFree(p) ? "free" : ""}">
             ${isFree(p) ? "Free" : p.price}
@@ -211,8 +217,8 @@ function loadTrending() {
         <div class="pack-app-tags">
           ${parseApps(p.apps).map((a) => `<span class="app-tag">${a}</span>`).join("")}
         </div>
-        <div class="pack-name">${p.name}</div>
-        <div class="pack-desc">${p.desc}</div>
+        <div class="pack-name">${esc(p.name)}</div>
+        <div class="pack-desc">${esc(p.desc)}</div>
         <div class="pack-footer">
           <span class="pack-price ${isFree(p) ? "free" : ""}">${isFree(p) ? "Free" : p.price}</span>
           <button class="pack-dl-btn">${isFree(p) ? "Download" : "Get Pack"}</button>

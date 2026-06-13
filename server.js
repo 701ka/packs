@@ -40,6 +40,29 @@ let mongoClientPromise = null;
 let memoryDb = null;
 let mongoDisabledReason = "";
 
+if (JWT_SECRET === "editorpack-dev-secret-change-me") {
+  console.warn("[security] JWT_SECRET default ishlatilmoqda — Render da o'zgartiring!");
+}
+
+// ===== RATE LIMITER (login brute-force himoyasi) =====
+const _rl = new Map();
+function rateLimitCheck(ip, maxAttempts = 10, windowMs = 15 * 60 * 1000) {
+  const now = Date.now();
+  const entry = _rl.get(ip);
+  if (!entry || now - entry.t > windowMs) {
+    _rl.set(ip, { n: 1, t: now });
+    return true;
+  }
+  if (entry.n >= maxAttempts) return false;
+  entry.n++;
+  return true;
+}
+function rateLimitReset(ip) { _rl.delete(ip); }
+setInterval(() => {
+  const cutoff = Date.now() - 15 * 60 * 1000;
+  for (const [ip, v] of _rl) if (v.t < cutoff) _rl.delete(ip);
+}, 5 * 60 * 1000);
+
 class PublicApiError extends Error {
   constructor(statusCode, message) {
     super(message);
@@ -757,8 +780,8 @@ async function handleApi(req, res, url) {
       .trim()
       .toLowerCase();
     const password = String(body.password || "");
-    if (!name || !email || password.length < 4) {
-      return send(res, 400, { error: "Ism, email va parol kiriting" });
+    if (!name || !email || password.length < 8) {
+      return send(res, 400, { error: "Ism, email va kamida 8 belgilik parol kiriting" });
     }
     if (db.users.some((u) => u.email === email)) {
       return send(res, 409, { error: "Bu email allaqachon bor" });
@@ -777,17 +800,17 @@ async function handleApi(req, res, url) {
   }
 
   if (method === "POST" && parts.join("/") === "auth/login") {
+    const ip = req.socket?.remoteAddress || "unknown";
+    if (!rateLimitCheck(ip)) {
+      return send(res, 429, { error: "Juda ko'p urinish. 15 daqiqadan so'ng qayta urinib ko'ring." });
+    }
     const body = await parseBody(req);
-    const email = String(body.email || "")
-      .trim()
-      .toLowerCase();
+    const email = String(body.email || "").trim().toLowerCase();
     const user = db.users.find((u) => u.email === email);
-    if (
-      !user ||
-      !verifyPassword(String(body.password || ""), user.password_hash)
-    ) {
+    if (!user || !verifyPassword(String(body.password || ""), user.password_hash)) {
       return send(res, 401, { error: "Email yoki parol noto'g'ri" });
     }
+    rateLimitReset(ip);
     return send(res, 200, { token: signToken(user), user: publicUser(user) });
   }
 
