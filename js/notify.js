@@ -2,7 +2,6 @@ function showToast(msg, type = "success") {
   const existing = document.querySelector(".ep-toast");
   if (existing) existing.remove();
 
-  const icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
   const colors = {
     success: "#4ade80",
     error: "#ef4444",
@@ -13,7 +12,6 @@ function showToast(msg, type = "success") {
   const toast = document.createElement("div");
   toast.className = "ep-toast";
   toast.innerHTML = `
-    <span class="ep-toast-icon">${icons[type] || icons.success}</span>
     <span class="ep-toast-msg">${msg}</span>
     <button class="ep-toast-close" onclick="this.parentElement.remove()">✕</button>
   `;
