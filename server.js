@@ -477,10 +477,18 @@ function validatePackFile(file) {
 
 function cloudinaryUpload(buffer, options) {
   return new Promise((resolve, reject) => {
-    const { v2: cld } = require("cloudinary");
+    const cld = require("cloudinary").v2;
+    const cfg = cld.config();
+    if (!cfg.cloud_name) {
+      return reject(new Error("cloud_name topilmadi — CLOUDINARY_URL noto'g'ri yoki to'liq emas"));
+    }
     const stream = cld.uploader.upload_stream(options, (err, result) => {
-      if (err) reject(err);
-      else resolve(result);
+      if (err) {
+        console.error("[cloudinary] upload error:", err.http_code, err.message);
+        reject(err);
+      } else {
+        resolve(result);
+      }
     });
     stream.end(buffer);
   });
@@ -506,7 +514,7 @@ async function savePackFile(file) {
       };
     } catch (err) {
       console.error("[cloudinary] Pack upload failed:", err.message);
-      throw new PublicApiError(500, "Fayl yuklashda xatolik. Qayta urinib ko'ring.");
+      throw new PublicApiError(500, `Cloudinary xatolik: ${err.message}`);
     }
   }
 
@@ -565,7 +573,7 @@ async function saveCoverImage(file) {
       return result.secure_url;
     } catch (err) {
       console.error("[cloudinary] Cover upload failed:", err.message);
-      throw new PublicApiError(500, "Rasm yuklashda xatolik. Qayta urinib ko'ring.");
+      throw new PublicApiError(500, `Cloudinary xatolik: ${err.message}`);
     }
   }
 
