@@ -264,7 +264,11 @@ async function downloadCurrentPack() {
     const res = await fetch(`${API}/packs/${currentPack.id}/download`, {
       headers: { Authorization: "Bearer " + getToken() },
     });
-    if (!res.ok) throw new Error((await res.json()).error || "Yuklab bo'lmadi");
+    if (!res.ok) {
+      let msg = "Yuklab bo'lmadi";
+      try { const d = await res.json(); msg = d.error || msg; } catch {}
+      throw new Error(msg);
+    }
 
     const blob = await res.blob();
     const disposition = res.headers.get("Content-Disposition") || "";
